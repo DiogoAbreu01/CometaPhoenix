@@ -26,6 +26,14 @@ int main(){using namespace phoenix;
      const auto best=lapTest.bestLapTime();lapTest.update({},.02);CHECK(lapTest.currentLapTime()>.0);CHECK(lapTest.bestLapTime()==best);
      lapTest.restart(42);CHECK(lapTest.vehicle().lap==0);CHECK(lapTest.bestLapTime()==0.);CHECK(lapTest.currentLapTime()==0.);
  }
+ for(auto circuit:{Circuit::Alpine,Circuit::Coast}){
+     for(auto weather:{Weather::Sunny,Weather::Rain,Weather::Snow}){
+         Game alternate;alternate.setCircuit(circuit);alternate.setAutopilot(true);alternate.setWeather(weather);
+         double offset=0;int steps=0;for(;steps<15000&&alternate.vehicle().lap<1;++steps){alternate.update({},.02);offset=std::max(offset,std::abs(alternate.trackOffset()));}
+         std::cout<<"CIRCUIT "<<circuitName(circuit)<<" "<<weatherName(weather)<<" lap="<<alternate.vehicle().lap<<" offset="<<offset<<" time="<<steps*.02<<"\n";
+         CHECK(alternate.vehicle().lap==1);CHECK(!alternate.hasDamage());CHECK(alternate.bestLapTime()>0.);
+     }
+ }
  Game far;far.setAutopilot(true);
  for(int i=0;i<30000 && far.lapProgress()<.4;++i)far.update({},.02);
  CHECK(far.lapProgress()>=.4);far.setAutopilot(false);far.requestDamage("carenagem",12);

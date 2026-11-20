@@ -220,10 +220,10 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
   ui.rect(mx-76*S,my-59*S,152*S,134*S,{.012f,.033f,.041f,.83f});
   for(int i=0;i<46;i++){
     float a=6.2831853f*i/46.,b=6.2831853f*(i+1)/46.;
-    float ra=43*S*(1.f+.133f*std::cos(3*a+.3f)+.073f*std::sin(5*a-.6f)+.047f*std::cos(7*a+1.2f)),rb=43*S*(1.f+.133f*std::cos(3*b+.3f)+.073f*std::sin(5*b-.6f)+.047f*std::cos(7*b+1.2f));
+    float ra=(float)phoenix::circuitRadius(game.circuit(),a)*8*S,rb=(float)phoenix::circuitRadius(game.circuit(),b)*8*S;
     ui.line(mx+ra*std::cos(a),my+ra*.7f*std::sin(a),mx+rb*std::cos(b),my+rb*.7f*std::sin(b),6*S,{.30f,.48f,.49f,.9f});
   }
-  float ang=std::atan2((float)veh.y,(float)veh.x),ra=43*S*(1.f+.133f*std::cos(3*ang+.3f)+.073f*std::sin(5*ang-.6f)+.047f*std::cos(7*ang+1.2f));
+  float ang=std::atan2((float)veh.y,(float)veh.x),ra=(float)phoenix::circuitRadius(game.circuit(),ang)*8*S;
   ui.rect(mx+ra*std::cos(ang)-4*S,my+ra*.7f*std::sin(ang)-4*S,8*S,8*S,CYAN);
   ui.text("MAPA",mx-62*S,my-55*S,1.5f*S,MUTED);
   if(game.cinematic()>0){ui.rect(0,(float)h*.46f,(float)w,90*S,{.31f,.024f,.02f,.6f});ui.text("ALERTA DE COLISAO",(float)w*.24f,(float)h*.48f,4.5f*S,BAD);}
@@ -252,7 +252,7 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
  ui.text("GFX "+intStr(quality),std::max(0.f,(float)w-116*S),(float)h-52*S,1.8f*S,WARN);
  if(paused){ui.rect(0,(float)h*.46f,(float)w,70*S,{.005f,.012f,.021f,.82f});ui.text("PAUSADO",(float)w*.38f,(float)h*.48f,4.8f*S,WHITE);}
 }
-void drawMenu(UI &ui,int w,int h,int quality){
+void drawMenu(UI &ui,int w,int h,int quality,phoenix::Circuit circuit){
  const float S=std::max(.28f,std::min({1.4f,(float)w/1280.f,(float)h/720.f}));
  ui.rect(0,0,(float)w,15*S,{.012f,.08f,.09f,.82f});
  ui.rect(35*S,120*S,7*S,245*S,CYAN);
@@ -262,7 +262,7 @@ void drawMenu(UI &ui,int w,int h,int quality){
  ui.rect(65*S,383*S,445*S,64*S,{.013f,.24f,.25f,.83f});
  ui.text("[ ENTER ] INICIAR CORRIDA",81*S,399*S,2.9f*S,WHITE);
  ui.rect(65*S,466*S,445*S,118*S,{.008f,.02f,.03f,.84f});
- ui.text("WASD / SETAS  -  PILOTAR",84*S,482*S,2*S,WHITE);
+ ui.text(std::string("[ T ] CIRCUITO: ")+phoenix::circuitName(circuit),84*S,482*S,2*S,WHITE);
  ui.text("1-5 CLIMAS     X/Z COLISAO",84*S,518*S,2*S,MUTED);
  ui.text("F11 TELA CHEIA   M MAPA   V SOM",84*S,554*S,2*S,MUTED);
  ui.rect(0,(float)h-60*S,(float)w,60*S,{.009f,.023f,.034f,.89f});
@@ -277,8 +277,8 @@ void screenshot(GLApi&gl,const std::string&name,int w,int h){
 } // namespace
 int main(int argc,char**argv){
  try{
-  std::string shot;int maxFrames=0;int initialWeather=0;bool autoPilot=false,forceGarage=false,forceMenu=false,benchmark=false;int initialQuality=2, initialWidth=1280, initialHeight=720;
-  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--screenshot"&&i+1<argc)shot=argv[++i];else if(a=="--frames"&&i+1<argc)maxFrames=std::stoi(argv[++i]);else if(a=="--autopilot")autoPilot=true;else if(a=="--garage")forceGarage=true;else if(a=="--menu")forceMenu=true;else if(a=="--benchmark")benchmark=true;else if(a=="--width"&&i+1<argc)initialWidth=std::clamp(std::stoi(argv[++i]),640,3840);else if(a=="--height"&&i+1<argc)initialHeight=std::clamp(std::stoi(argv[++i]),480,2160);else if(a=="--quality"&&i+1<argc)initialQuality=std::max(0,std::min(3,std::stoi(argv[++i])));else if(a=="--weather"&&i+1<argc){std::string v=argv[++i];initialWeather=v=="rain"?1:v=="snow"?2:v=="storm"?3:v=="fog"?4:0;}}
+  std::string shot;int maxFrames=0;int initialWeather=0;bool autoPilot=false,forceGarage=false,forceMenu=false,benchmark=false;int initialCircuit=0;int initialQuality=2, initialWidth=1280, initialHeight=720;
+  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--screenshot"&&i+1<argc)shot=argv[++i];else if(a=="--frames"&&i+1<argc)maxFrames=std::stoi(argv[++i]);else if(a=="--autopilot")autoPilot=true;else if(a=="--garage")forceGarage=true;else if(a=="--menu")forceMenu=true;else if(a=="--benchmark")benchmark=true;else if(a=="--width"&&i+1<argc)initialWidth=std::clamp(std::stoi(argv[++i]),640,3840);else if(a=="--height"&&i+1<argc)initialHeight=std::clamp(std::stoi(argv[++i]),480,2160);else if(a=="--circuit"&&i+1<argc)initialCircuit=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--quality"&&i+1<argc)initialQuality=std::max(0,std::min(3,std::stoi(argv[++i])));else if(a=="--weather"&&i+1<argc){std::string v=argv[++i];initialWeather=v=="rain"?1:v=="snow"?2:v=="storm"?3:v=="fog"?4:0;}}
   if(benchmark&&maxFrames==0)maxFrames=300;
   if(SDL_Init(0x00000020 | 0x00004000)!=0)throw std::runtime_error(SDL_GetError());
   SDL_GL_SetAttribute(17,3);SDL_GL_SetAttribute(18,3);SDL_GL_SetAttribute(21,1);SDL_GL_SetAttribute(5,1);SDL_GL_SetAttribute(6,24);
@@ -321,7 +321,7 @@ int main(int argc,char**argv){
   gl.GenVertexArrays(1,&fontVAO);gl.GenBuffers(1,&fontVBO);
   gl.BindVertexArray(uiVAO);gl.BindBuffer(ARRAY,uiVBO);gl.EnableVertexAttribArray(0);gl.VertexAttribPointer(0,2,FLOAT,0,6*sizeof(float),nullptr);gl.EnableVertexAttribArray(1);gl.VertexAttribPointer(1,4,FLOAT,0,6*sizeof(float),reinterpret_cast<const void*>(2*sizeof(float)));
   gl.BindVertexArray(fontVAO);gl.BindBuffer(ARRAY,fontVBO);gl.EnableVertexAttribArray(0);gl.VertexAttribPointer(0,2,FLOAT,0,8*sizeof(float),nullptr);gl.EnableVertexAttribArray(1);gl.VertexAttribPointer(1,2,FLOAT,0,8*sizeof(float),reinterpret_cast<const void*>(2*sizeof(float)));gl.EnableVertexAttribArray(2);gl.VertexAttribPointer(2,4,FLOAT,0,8*sizeof(float),reinterpret_cast<const void*>(4*sizeof(float)));
-  phoenix::Game game(42);game.setWeather((phoenix::Weather)initialWeather);game.setAutopilot(autoPilot);
+  phoenix::Game game(42);game.setCircuit((phoenix::Circuit)initialCircuit);game.setWeather((phoenix::Weather)initialWeather);game.setAutopilot(autoPilot);
   if(forceGarage){game.requestDamage("carenagem",12);for(int i=0;i<150;i++)game.update({},.05);}
   bool running=true,paused=false,menuOpen=forceMenu||(maxFrames==0&&!forceGarage),fullscreen=false,mapOpen=false,muted=false;
   int quality=initialQuality,frame=0; UI ui;ui.verts.reserve(30000);ui.letterVerts.reserve(14000);int measuredRace=0,measuredGarage=0,measuredMenu=0;std::vector<double> frameMs;frameMs.reserve(maxFrames>0?maxFrames:0);double fps=60.,fpsWindow=0.;int fpsFrames=0;
@@ -339,6 +339,7 @@ int main(int argc,char**argv){
      if(k==13||k==1073741912){menuOpen=false;}
      if(k==1073741892){fullscreen=!fullscreen;SDL_SetWindowFullscreen(window,fullscreen?0x00001001u:0u);}
      if(k=='q')quality=(quality+1)%4;
+     if(k=='t' && menuOpen){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%3));smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
      if(!menuOpen){
        if(k=='m')mapOpen=!mapOpen;
        if(k=='v')muted=!muted;
@@ -376,11 +377,11 @@ int main(int argc,char**argv){
        setf(gl,p,"u_phase",game.simulator().fase()==cometa::Fase::Reparando?2.f:game.simulator().fase()==cometa::Fase::Diagnostico?1.f:3.f);
      }else{
        const auto &ranking=game.simulator().componenteMaisCritico();set2(gl,p,"u_camera",mapOpen?0.f:smx,mapOpen?0.f:smy);set2(gl,p,"u_car",(float)game.vehicle().x,(float)game.vehicle().y);
-       setf(gl,p,"u_heading",(float)game.vehicle().angle);setf(gl,p,"u_zoom",mapOpen?15.f:2.85f);
+       setf(gl,p,"u_heading",(float)game.vehicle().angle);setf(gl,p,"u_zoom",mapOpen?17.f:2.85f);
        gl.ActiveTexture(TEXTURE0);gl.BindTexture(TEXTURE_2D,spriteTexture);gl.Uniform1i(uniform(gl,p,"u_kartSprite"),0);
        setf(gl,p,"u_weather",(float)(int)game.weather());setf(gl,p,"u_speed",(float)game.vehicle().speed);
        setf(gl,p,"u_flash",0.f);setf(gl,p,"u_integrity",(float)ranking.integridade);
-       setf(gl,p,"u_cinematic",0.f);setf(gl,p,"u_box",0);setf(gl,p,"u_night",0);
+       setf(gl,p,"u_cinematic",0.f);setf(gl,p,"u_box",0);setf(gl,p,"u_night",0);setf(gl,p,"u_circuit",(float)(int)game.circuit());
      }
    }
    gl.BindVertexArray(quadVAO);gl.DrawArrays(TRIANGLES,0,3);
@@ -394,7 +395,7 @@ int main(int argc,char**argv){
       gl.DrawArrays(TRIANGLES,0,3);
    }
    ui.verts.clear();ui.letterVerts.clear();
-   if(menuOpen)drawMenu(ui,w,h,quality); else drawHUD(ui,game,w,h,quality,paused,fps);
+   if(menuOpen)drawMenu(ui,w,h,quality,game.circuit()); else drawHUD(ui,game,w,h,quality,paused,fps);
    gl.Enable(BLEND);gl.BlendFunc(SRC_ALPHA,ONE_MINUS_SRC_ALPHA);
    gl.UseProgram(uiProg);set2(gl,uiProg,"res",(float)w,(float)h);
    gl.BindVertexArray(uiVAO);gl.BindBuffer(ARRAY,uiVBO);

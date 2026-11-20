@@ -14,6 +14,7 @@ uniform float u_quality;
 uniform float u_cinematic;
 uniform float u_box;
 uniform float u_night;
+uniform float u_circuit;
 uniform sampler2D u_kartSprite;
 #define PI 3.14159265359
 float hash21(vec2 p){p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32);return fract(p.x*p.y);}
@@ -36,6 +37,7 @@ vec3 forestDetails(vec2 p,vec3 base,float distanceToTrack){
    float shadow=(1.-smoothstep(crown*.74,crown*1.45,length(q+vec2(.028,-.035))))*.29;
    outC*=1.-shadow*woods;
    float tree=(1.-smoothstep(crown-.013,crown+.017,dist+shape))*woods*step(.19,h);
+   if(u_circuit>1.5 && distanceToTrack>0.) continue;
    vec3 leaves=mix(vec3(.012,.055,.054),vec3(.075,.17,.098),hash21(id+33.));
    leaves*=.73+.31*smoothstep(-.5,.55,normalize(q+vec2(.002)).x*.67+normalize(q+vec2(.002)).y*.33);
    leaves+=noise(q*128.)*.028;
@@ -45,7 +47,7 @@ vec3 forestDetails(vec2 p,vec3 base,float distanceToTrack){
 }
 float sdBox(vec2 p,vec2 b){vec2 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,q.y),0.);}
 mat2 rot(float a){return mat2(cos(a),sin(a),-sin(a),cos(a));}
-float radius(float a){return 4.65+.62*cos(3.*a+.3)+.34*sin(5.*a-.6)+.22*cos(7.*a+1.2);}
+float radius(float a){vec4 s=u_circuit<.5?vec4(4.65,.62,.34,.22):u_circuit<1.5?vec4(5.35,.94,.22,.12):vec4(5.85,.32,.58,.08);return s.x+s.y*cos(3.*a+.3)+s.z*sin(5.*a-.6)+s.w*cos(7.*a+1.2);}
 float track(vec2 p){return length(p)-radius(atan(p.y,p.x));}
 vec3 baseCol(vec2 p,float d){
   vec2 g=p*7.;float n=noise(g*3.4),fine=noise(g*15.);
@@ -53,6 +55,7 @@ vec3 baseCol(vec2 p,float d){
   grass+=.022*sin(p.x*27.+n*8.)*sin(p.y*25.);
   float forest= smoothstep(5.6,7.2,length(p));
   grass=mix(grass,vec3(.014,.051,.059),forest*.7);
+  if(u_circuit>1.5){grass=mix(vec3(.22,.17,.10),vec3(.39,.33,.19),n);float coast=smoothstep(.8,1.8,d);grass=mix(grass,vec3(.018,.16,.21)+vec3(.035,.08,.09)*noise(p*12.),coast);}else if(u_circuit>.5){grass=mix(vec3(.08,.10,.11),vec3(.24,.26,.25),n);grass=mix(grass,vec3(.66,.72,.76),smoothstep(.6,1.3,abs(d))*.75);}
   float roadNoise=noise(p*95.)*.035 + noise(p*5.)*.031;
   vec3 asphalt=vec3(.053,.069,.086)+roadNoise;
   asphalt=mix(asphalt,vec3(.09,.115,.13),.16+max(0.,sin(p.x*12.))*0.1);
@@ -88,7 +91,7 @@ vec3 baseCol(vec2 p,float d){
   col=mix(col,mix(vec3(.87),vec3(.085,.11,.13),checks),start*.95);
   // Box com faixa separada na parte leste.
   float pit=1.-smoothstep(.028,.04,abs(p.y-.0));
-  col=mix(col,vec3(.12,.57,.55),pit*smoothstep(5.5,5.65,p.x)*(1.-smoothstep(6.85,7.0,p.x))*.8);
+  col=mix(col,vec3(.12,.57,.55),pit*smoothstep(radius(0.)+.25,radius(0.)+.40,p.x)*(1.-smoothstep(radius(0.)+1.6,radius(0.)+1.75,p.x))*.8);
   vec2 boxp=p-vec2(radius(0.)+.76,.12);
   float pitPad=1.-smoothstep(.1,.13,sdBox(boxp,vec2(.24,.24)));
   col=mix(col,vec3(.1,.18,.21),pitPad);
@@ -97,7 +100,7 @@ vec3 baseCol(vec2 p,float d){
   col=mix(col,mix(vec3(.96,.71,.13),vec3(.08,.09,.1),hazard),edge*.96);
   col=forestDetails(p,col,d);
   // Illuminated pit-strip and asphalt lane microstructure.
-  float pitGlow=smoothstep(5.48,5.67,p.x)*(1.-smoothstep(6.94,7.16,p.x));
+  float pitGlow=smoothstep(radius(0.)+.23,radius(0.)+.42,p.x)*(1.-smoothstep(radius(0.)+1.69,radius(0.)+1.91,p.x));
   float neon=1.-smoothstep(.006,.018,abs(p.y-.23));
   col+=vec3(.018,.23,.18)*neon*pitGlow*step(1.5,u_quality);
 

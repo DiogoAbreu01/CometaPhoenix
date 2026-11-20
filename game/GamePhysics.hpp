@@ -6,6 +6,9 @@
 #include "cometa/Simulation.hpp"
 
 namespace phoenix {
+enum class Circuit { Forest, Alpine, Coast };
+const char* circuitName(Circuit circuit) noexcept;
+double circuitRadius(Circuit circuit,double angle) noexcept;
 enum class Weather { Sunny, Rain, Snow, Storm, Fog };
 const char* weatherName(Weather weather) noexcept;
 struct Input { bool throttle{}, brake{}, left{}, right{}, reset{}; };
@@ -17,6 +20,8 @@ class Game {
 public:
     explicit Game(std::uint32_t seed=42);
     void update(const Input& input, double dt);
+    void setCircuit(Circuit circuit);
+    Circuit circuit() const noexcept { return circuit_; }
     void setWeather(Weather w) noexcept { weather_ = w; }
     void restart(std::uint32_t seed = 42);
     void requestDamage(const std::string& component="carenagem", double severity=10);
@@ -42,6 +47,7 @@ private:
     std::unique_ptr<cometa::Simulacao> sim_;
     Vehicle vehicle_{};
     Weather weather_{Weather::Sunny};
+    Circuit circuit_{Circuit::Forest};
     std::uint32_t seed_{42};
     double worldTime_{0}, cinematic_{0}, lastImpact_{-100};
     bool autopilot_{false};
