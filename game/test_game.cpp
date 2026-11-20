@@ -120,6 +120,19 @@ int main(){using namespace phoenix;
  CHECK(state.effectiveGrip>.15 && state.effectiveGrip<=1.05);
  thermal.restart();CHECK(thermal.handling().tireWear==0.);
  // Contact impulse and cooldown are verified in tests/test_contacts.cpp.
+ // Competitive contact must not cancel a completed circuit; it must reject a ghost record.
+ Game competitive;competitive.setTargetLaps(1);competitive.setAutopilot(true);
+ for(int i=0;i<100;++i)competitive.update({},.02);
+ const auto cv=competitive.vehicle();
+ const double ca=cv.angle;
+ const GhostPose rivalContact{cv.x+std::cos(ca)*.10,cv.y+std::sin(ca)*.10,ca};
+ const auto soft=competitive.collideRival(rivalContact,rivalContact,.02);
+ CHECK(soft.overlap && !soft.damaged && soft.closingSpeedMs>2.4);
+ CHECK(competitive.validLap());
+ for(int i=0;i<15000&&!competitive.finished() && !competitive.abandoned();++i)competitive.update({},.02);
+ CHECK(competitive.finished());
+ CHECK(competitive.validCompletedLaps()==1);
+ CHECK(!competitive.hasGhost() && competitive.bestLapTime()==0.);
  Game far;far.setAutopilot(true);
  for(int i=0;i<30000 && far.lapProgress()<.4;++i)far.update({},.02);
  CHECK(far.lapProgress()>=.4);far.setAutopilot(false);far.requestDamage("carenagem",12);

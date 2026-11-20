@@ -83,3 +83,6 @@ Codex BlueLab tarefa 11 criou RivalAI.hpp e testes determinísticos de distânci
 
 ## 0.9.16 — ajuste pos-validacao
 Correcao de conflito entre tecla B (layout) e guia de trajetoria (F), indicador explicito no menu, limite de dano de colisao de 10,5 m/s para reduzir incidentes leves e logs de impacto grave no benchmark. Build local 15/15, smoke RX580 Full HD chuva 404,25 FPS medidos com 600 quadros, p95 2,624 ms. Continuam pendentes homologacao manual e testes termicos.
+
+## 0.9.17 — voltas validas e records limpos
+Separacao dos flags validLap_ e cleanLap_ para evitar que contatos leves cancelem voltas necessarias a conclusao da corrida; sem conceder recorde fantasma para volta com toque. Maior tolerancia de dano estrutural na colisao (fechamento >=15 m/s); teste dedicado de finalizacao e ausencia de ghost apos contato. Windows CTest 15/15. Interacao entre karts ainda e heuristica; homologacao manual continua pendente.

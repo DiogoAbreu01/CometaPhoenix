@@ -83,7 +83,7 @@ private:
     bool autopilot_{false};
     double lastPolarAngle_{0}, orbitTurns_{0};
     double currentLapTime_{}, lastLapTime_{}, bestLapTime_{};
-    bool validLap_{true};
+    bool validLap_{true}, cleanLap_{true};
     int validCompletedLaps_{0}, targetLaps_{3};
 };
 }

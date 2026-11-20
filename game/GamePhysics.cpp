@@ -43,7 +43,7 @@ void Game::restart(std::uint32_t seed){
     vehicle_.x=circuitRadius(circuit_,0);vehicle_.y=0;vehicle_.angle=PI/2;
     lastPolarAngle_=0;orbitTurns_=0;worldTime_=0;cinematic_=0;lastImpact_=-100;lastKartContact_=-100;
     handling_={};
-    currentLapTime_=lastLapTime_=bestLapTime_=0.;validLap_=true;validCompletedLaps_=0;
+    currentLapTime_=lastLapTime_=bestLapTime_=0.;validLap_=true;cleanLap_=true;validCompletedLaps_=0;
     tireModel_.reset(climate(weather_).temperature);
     ghostLap_.reserve(maxGhostSamples_);
     bestGhostLap_.reserve(maxGhostSamples_);
@@ -188,7 +188,7 @@ KartContactEvent Game::collideRival(const GhostPose& rival,const GhostPose& prev
     const double side=std::cos(vehicle_.angle)*contact.ny-std::sin(vehicle_.angle)*contact.nx;
     vehicle_.angle=normAngle(vehicle_.angle+std::clamp(side*incoming*.014,-.28,.28));
     vehicle_.lateral+=side*incoming/9.80665;
-    if(incoming>2.4)validLap_=false;
+    if(incoming>2.4)cleanLap_=false;
     if(incoming>=15.0 && worldTime_-lastImpact_>2.2) {
         const bool left=side>0.;
         const bool front=std::cos(vehicle_.angle)*(-contact.nx)+std::sin(vehicle_.angle)*(-contact.ny)>.25;
@@ -257,15 +257,15 @@ void Game::update(const Input& in, double dt){
         currentLapTime_+=dt;
         if(offroad || std::abs(trackOffset())>.42)validLap_=false;
         const int completed=std::max(vehicle_.lap,(int)std::floor(orbitTurns_/(2*PI)));
-        if(validLap_)recordGhostSample(completed>vehicle_.lap);
+        if(validLap_ && cleanLap_)recordGhostSample(completed>vehicle_.lap);
         if(completed>vehicle_.lap){
             lastLapTime_=validLap_?currentLapTime_:0.;
             if(lastLapTime_>0.)++validCompletedLaps_;
-            if(lastLapTime_>0. && (bestLapTime_==0. || lastLapTime_<bestLapTime_)){
+            if(lastLapTime_>0. && cleanLap_ && (bestLapTime_==0. || lastLapTime_<bestLapTime_)){
                 bestLapTime_=lastLapTime_;
                 bestGhostLap_.swap(ghostLap_);
             }
-            vehicle_.lap=completed;currentLapTime_=0.;validLap_=true;
+            vehicle_.lap=completed;currentLapTime_=0.;validLap_=true;cleanLap_=true;
             startGhostLap();
             if(finished()){vehicle_.speed=0.;vehicle_.lateral=0.;return;}
         }
@@ -321,7 +321,7 @@ void Game::update(const Input& in, double dt){
     sim_->avancar(dt);
     if(before!=cometa::Fase::Corrida && sim_->fase()==cometa::Fase::Corrida){
        // apos conclusao do box, reposiciona na entrada da pista evitando salto de colisao
-       double a=0.;vehicle_.x=circuitRadius(circuit_,a);vehicle_.y=0.;vehicle_.angle=PI/2;vehicle_.speed=0;lastPolarAngle_=a;orbitTurns_=vehicle_.lap*2*PI;lastImpact_=worldTime_;currentLapTime_=0.;validLap_=true;
+       double a=0.;vehicle_.x=circuitRadius(circuit_,a);vehicle_.y=0.;vehicle_.angle=PI/2;vehicle_.speed=0;lastPolarAngle_=a;orbitTurns_=vehicle_.lap*2*PI;lastImpact_=worldTime_;currentLapTime_=0.;validLap_=true;cleanLap_=true;
        startGhostLap();
     }
 }

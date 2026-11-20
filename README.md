@@ -1,4 +1,4 @@
-# Cometa Phoenix — 0.9.16 (candidato nativo)
+# Cometa Phoenix — 0.9.17 (candidato nativo)
 
 Projeto ECOP13A / LAB12–LAB14. Corrida 2D com três circuitos e cinco condições climáticas, oficina 3D com diagnóstico, regeneração e abandono. Aplicativo e motor C++17 com SDL2/OpenGL 3.3 e shaders GLSL. Não depende de navegador nem JavaScript. Modelo físico didático, não certificado.
 
@@ -74,3 +74,6 @@ Para realizar uma partida de QA sem alterar seus dados: cometa_game --frames 360
 
 ## 0.9.16 — ajuste de estabilidade
 No menu, F liga/desliga a guia de trajetoria; B alterna esquemas de teclado. Colisoes graves entre karts agora exigem velocidade relativa normal de pelo menos 10,5 m/s, reduzindo reparos por contatos leves. Benchmarks emitem RIVAL_HARD_CONTACT para contatos graves.
+
+## 0.9.17 — integridade de voltas em disputa
+Contato com rivais em velocidade moderada nao cancela a contagem da volta nem impede a chegada; invalida somente o recorde fantasma daquela volta (nao foi limpa). Dano grave requer maior velocidade de fechamento. Ultrapassagens e pilotos rivais continuam sujeitos ao simulador simplificado de contato.
