@@ -67,7 +67,8 @@ void main(){
    float pearl=pow(1.0-max(dot(n,v),0.0),3.0);
    base=mix(base,base+vec3(.02,.10,.10),pearl*.55);
  }
- vec3 col=base*(.17+.12*max(0.0,n.z))*(1.0-metal*.55);
+ float ao=mix(.46,1.0,smoothstep(.05,.54,v_world.z))*(.75+.25*max(n.z,0.));
+ vec3 col=base*(.15+.18*max(0.0,n.z))*(1.0-metal*.55)*ao;
  vec3 l1=normalize(vec3(1.5,-2.8,4.0)-v_world),l2=normalize(vec3(-2.5,2.2,3.5)-v_world);
  vec3 l3=normalize(vec3(1.6,2.8,2.8)-v_world);
  col+=directLight(n,v,l1,vec3(3.5,4.7,4.7),base,rough,metal,coat);
@@ -78,12 +79,27 @@ void main(){
    vec3 refl=reflect(-v,n);
    float barA=pow(sat(dot(refl,normalize(vec3(-.35,-.62,.70)))),mix(125.0,18.0,rough));
    float barB=pow(sat(dot(refl,normalize(vec3(.71,.39,.50)))),mix(150.0,19.0,rough));
-   col+=(vec3(.65,1.0,1.0)*barA+vec3(1.0,.48,.22)*barB)*mix(.22,.9,metal);
+   // Broad rectangular softbox reflected in paint and polished hardware.
+   float panel=pow(sat(dot(refl,normalize(vec3(-.15,-.58,.80)))),mix(12.,3.,rough));
+   float band=(1.-smoothstep(.12,.40,abs(refl.x+.15)));
+   vec3 F=fresnel(max(dot(n,v),0.),mix(vec3(.045),base,metal));
+   col+=(vec3(.65,1.0,1.0)*barA+vec3(1.0,.48,.22)*barB)*mix(.04,.53,metal)*(1.-rough*.75);
+   col+=vec3(.52,.56,.59)*panel*band*F*(.5+.5*coat.x)*ao;
  }
  float affected=1.0-step(.49,abs(u_group-u_part));
+ // Existing PHXM wheel group is shared; identify each tire by its measured quadrant.
+ if(u_part>10.5){
+   float wheelId=(v_world.x>=0.0?11.0:13.0)+(v_world.y<0.0?1.0:0.0);
+   affected=(1.0-step(.49,abs(u_group-4.0)))*(1.0-step(.49,abs(wheelId-u_part)));
+ }
  float broken=sat(u_damage*affected);
  float scan=.5+.5*sin(v_world.x*83.0+v_world.y*59.0+u_time*10.0);
- col=mix(col,vec3(1.25,.025,.012),broken*(.48+.22*scan));
+ // Preserve the underlying paint: tint the affected part, with a localized scar.
+ float wound=1.0;
+ if(abs(u_part-2.0)<.49)wound=1.0-smoothstep(.12,.68,length((v_world-vec3(.74,.23,.46))*vec3(1.0,1.3,.8)));
+ float streak=pow(abs(sin(v_world.x*175.0+v_world.y*130.0+v_world.z*40.0)),14.0);
+ col=mix(col,col*vec3(1.05,.45,.37)+vec3(.16,.006,.004),broken*(.20+.12*scan));
+ col=mix(col,vec3(.52,.045,.018),broken*wound*(.30+.15*streak));
  // Micro-scratches and fading scar are localized only to the damaged component.
  float rim=pow(1.0-max(dot(n,v),0.0),4.0);
  if(u_finish>6.5)col+=vec3(.0,.22,.23);

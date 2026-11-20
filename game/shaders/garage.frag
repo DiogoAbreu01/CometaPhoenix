@@ -36,7 +36,10 @@ void main(){
   floorcol+=vec3(.01,.15,.18)*ring2*.35;
   // Contact shadow under exposed wheels and chassis.
   float shadow=1.-smoothstep(.45,1.40,length(p.xy*vec2(.9,1.05)));
-  floorcol*=1.-shadow*.58;
+  vec2 wheel=vec2(p.x>0.?p.x-.70:p.x+.80,abs(p.y)-.61);
+  float contact=1.-smoothstep(.20,1.12,length(wheel/vec2(.26,.20)));
+  float chassis=1.-smoothstep(.42,1.15,length(p.xy/vec2(.85,.48)));
+  floorcol*=max(.13,(1.-shadow*.40)*(1.-contact*.81)*(1.-chassis*.45));
   // Reflective shop floor, inexpensive non-RT wet reflection streaks.
   float streak=pow(max(0.,sin(p.y*20.+sin(p.x*7.)*.6)),14.);
   floorcol+=vec3(.045,.11,.13)*streak*(u_quality>1.5?.35:.15)*exp(-radius*.15);

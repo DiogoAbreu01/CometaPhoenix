@@ -15,7 +15,23 @@ Reaberto o PDF ECOP13A_LABS12_14_PROJETO_COMETA_LIVRE (2 páginas) e conferido o
 ## Alterações realizadas
 - Remoção dos quatro quadros de cutscene e seu carregamento na inicialização.
 - Pista ampliada com fórmula de raio coincidente com shader; piloto automático usa tangente da curva. Mapa em M.
-- Mesh PHXM com 32.946 vértices e 61.752 triângulos, derivada do GLB local da v0.8. 1 desenho indexado na oficina. Sprite 2D oriundo da malha. O modelo artístico hospedado do Higgsfield não é o arquivo usado em tempo real.
+- Mesh PHXM MK-III com 55.994 vértices e 92.924 triângulos, sobre a malha original derivada do GLB local da v0.8. A oficina usa uma chamada de desenho indexado. O sprite 2D continua sendo o da malha original. O modelo artístico hospedado do Higgsfield não é o arquivo usado em tempo real.
+
+### Regenerar a malha MK-III
+
+Execute na raiz do repositório com Bash (Git Bash no Windows). O gerador lê
+a malha original do histórico e grava um candidato separado, que reabre
+para validar o PHXM, a contagem, os valores finitos e os limites dos índices.
+
+```bash
+mkdir -p build
+git show d1f697c4392dd16f826eb130d4052a1445830c99:game/assets/kart.mesh > build/kart-base.mesh
+clang++ -std=c++17 -O2 tools/upgrade_kart.cpp -o build/upgrade_kart
+./build/upgrade_kart build/kart-base.mesh build/kart-mkiii.mesh
+```
+
+Use um caminho de saída novo a cada execução. Após a validação, copie
+`build/kart-mkiii.mesh` para `game/assets/kart.mesh` para atualizar o asset.
 - Som original V12 aproximado, sintetizado por wavetable em callback SDL C++; giro ajustado à velocidade/marcha. Não é captura real Ferrari e não foi ouvido em hardware. Não há áudio de colisão nesta versão nativa.
 - Cache de uniform, buffers de HUD reaproveitados, max_element em lugar de cópia/ordenação por quadro, framebuffer com profundidade em ambas as cenas, quatro perfis, descarte de amostra do sprite fora da área do kart.
 - Testes de todos os nove componentes, dano crítico no teclado, retorno após reparo, reset de semente, integridade dos assets e ordenação de risco.

@@ -21,3 +21,17 @@ Pendências: novas pistas, assets mais realistas, impactos diferenciados, testes
 - Windows Release RX580: CTest 8/8. Full HD Ultra, chuva: Floresta 3600 frames, 3570 medidos, 425,6 FPS (inclui cena pós-chegada), 1 volta concluída sem danos, 41,89 s simulados. Litoral 7200 frames, 7170 medidos, 532,53 FPS, p95 2,126 ms, p99 2,185 ms, 2 voltas/120 s simulados sem danos, 13,63 s de execução real. Sem áudio e VSync, passo fixo. Estes números não representam teste de temperatura prolongado. Capturas e logs no diretório de evidências Windows. Atualização da verificação gráfica Linux no workflow; resultado ainda não confirmado nesta revisão.
 - Infraestrutura isolada: TITAN 35B IQ2_XXS passou smoke test real, mas consulta técnica posterior interrompida por RAM. Não é requisito do executável. Codex operacional; IC preservada.
 - Pendências: mesh 3D de maior fidelidade, áudio e avaliação manual/estabilidade prolongada, verificar CI Linux da versão, apresentação após homologação. Não declarar 1.0 final.
+
+## 0.9.9 — MK-III: geometria mecânica e vista superior
+- Codex, tarefa 8 da fila exclusiva BlueLab: gerador C++17 `tools/upgrade_kart.cpp` adiciona quatro rotores ventilados, quatro cubos com 20 fixadores, quatro molas com colares, 13 aletas de motor e dois ajustadores de cintos. 55.994 vértices, 92.924 triângulos (+31.172), preservando a malha original, limites e formato PHXM. Regeração conferida byte a byte pelo agente.
+- Gerador C++17 `tools/bake_kart_sprite.cpp`: rasterização ortográfica com buffer de profundidade, normais interpoladas, iluminação e supersampling 2x para sprite RGBA 512x512. 106.635 pixels cobertos. Vista em corrida atualizada a partir da malha nova, sem custo de geometria adicional nessa cena.
+- Oficina: sombras de contato sob as rodas, reflexos de estúdio aproximados, dano visual menos invasivo, seleção individual de pneus por quadrante, rotação A/D. Não é uma reconstrução exata da prancha conceitual nem renderização fotorrealista.
+- Windows Release RX580 2048SP, Full HD Ultra: 8/8 CTest, teste reforçado de normais, limite de triângulos e transparência. Oficina 240 quadros (210 medidos), 661,197 FPS, p95 3,1805 ms, p99 3,4687 ms; corrida Litoral chuva 1200 quadros (1170 medidos), 536,003 FPS, p95 2,1307 ms, p99 2,2239 ms. Ensaios curtos, sem áudio/VSync, sem screenshot durante as medições reportadas. Sem teste térmico/manual completo.
+- Capturas reais reduzidas em `docs/screenshots/099-garage-final.jpg` e `099-race.jpg`; originais no PC. Linux desta revisão, áudio e homologação final pendentes. TITAN 35B não acionado nesta rodada por instabilidade anterior; Codex/BlueLab efetivamente utilizados. IC preservada.
+
+Para atualizar a vista superior após regenerar a malha (Linux ou toolchain C++17 equivalente no Windows):
+```sh
+c++ -std=c++17 -O2 tools/bake_kart_sprite.cpp -o build/bake_kart_sprite
+./build/bake_kart_sprite game/assets/kart.mesh build/kart_sprite.rgba
+cp build/kart_sprite.rgba game/assets/kart_sprite.rgba
+```
