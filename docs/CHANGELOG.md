@@ -57,3 +57,6 @@ cp build/kart_sprite.rgba game/assets/kart_sprite.rgba
 - Shader de corrida mostra o MK-III transl√∫cido azul-ciano na trajet√≥ria gravada, tecla G alterna a exibi√ß√£o, HUD informa quando existe recorde. N√£o gera colis√µes. Fantasma armazenado apenas em mem√≥ria nesta revis√£o.
 - Windows Release, RX 580 2048SP, Full HD Ultra chuva, corrida com piloto autom√°tico: 3300 quadros (3270 medidos), uma volta conclu√≠da e fantasma presente ap√≥s o primeiro recorde, zero dano; 430,291 FPS m√©dios medidos, P95 2,514 ms, P99 2,581 ms. Sem VSync e som, 7,8 segundos reais; n√£o √© teste t√©rmico prolongado. CTest 10/10.
 - Captura real: docs/screenshots/0911-ghost-fullhd.jpg. Linux CI da revis√£o, valida√ß√£o de controles manuais e homologa√ß√£o final pendentes. TITAN 35B n√£o foi executado nesta etapa por instabilidade anterior em consultas; BlueLab/Codex efetivamente utilizados. IC intocada.
+
+## 0.9.12 ó rodada 1: recordes no disco
+Arquivo PHOENIX_GHOST_V1 com vers„o, circuito, clima, tempo, posiÁıes e ‚ngulos; limite de 4096 amostras e 1 MiB, validaÁ„o estrita e escrita via tempor·rio. PersistÍncia nativa C++17, diretÛrio SDL_GetPrefPath; reload ao reiniciar, mudar pista/clima ou n˙mero de voltas. Benchmarks n„o gravam dados do usu·rio. CTest 10/10 Windows.

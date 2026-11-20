@@ -2,6 +2,10 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <fstream>
+#include <iomanip>
+#include <locale>
+#include <system_error>
 namespace phoenix {
 namespace {constexpr double PI=3.14159265358979323846;
 struct Shape {double base,a3,a5,a7;};
@@ -61,6 +65,72 @@ GhostPose Game::ghostPose() const noexcept {
     };
 }
 
+bool Game::saveRecord(const std::filesystem::path& file) const {
+    if(file.empty() || !hasGhost() || !std::isfinite(bestLapTime_) || bestLapTime_<=0. ||
+       bestGhostLap_.size()<2 || bestGhostLap_.size()>maxGhostSamples_)return false;
+    std::error_code ec;
+    if(!file.parent_path().empty())std::filesystem::create_directories(file.parent_path(),ec);
+    if(ec)return false;
+    const auto temp=file.string()+".tmp";
+    {
+        std::ofstream out(temp,std::ios::trunc);
+        if(!out)return false;
+        out.imbue(std::locale::classic());
+        out<<std::setprecision(17);
+        out<<"PHOENIX_GHOST_V1 "<<static_cast<int>(circuit_)<<' '<<static_cast<int>(weather_)
+           <<' '<<bestLapTime_<<' '<<bestGhostLap_.size()<<'\n';
+        for(const auto& sample:bestGhostLap_)out<<sample.time<<' '<<sample.pose.x<<' '
+           <<sample.pose.y<<' '<<sample.pose.angle<<'\n';
+        out.flush();
+        if(!out)return false;
+    }
+    std::filesystem::rename(temp,file,ec);
+    if(ec){
+        std::filesystem::remove(file,ec);
+        ec.clear();
+        std::filesystem::rename(temp,file,ec);
+    }
+    if(ec){std::filesystem::remove(temp,ec);return false;}
+    return true;
+}
+bool Game::loadRecord(const std::filesystem::path& file) {
+    bestGhostLap_.clear();bestLapTime_=0.;
+    if(file.empty())return false;
+    std::error_code ec;
+    const auto size=std::filesystem::file_size(file,ec);
+    if(ec || size==0 || size>1024*1024)return false;
+    std::ifstream in(file);
+    if(!in)return false;
+    in.imbue(std::locale::classic());
+    std::string magic;int circuit=-1,weather=-1;
+    double best=0.;std::size_t count=0;
+    if(!(in>>magic>>circuit>>weather>>best>>count) ||
+       magic!="PHOENIX_GHOST_V1" || circuit!=static_cast<int>(circuit_) ||
+       weather!=static_cast<int>(weather_) || !std::isfinite(best) ||
+       best<1. || best>36000. || count<2 || count>maxGhostSamples_)return false;
+    std::vector<GhostSample> samples;
+    samples.reserve(count);
+    for(std::size_t i=0;i<count;++i){
+        GhostSample s{};
+        if(!(in>>s.time>>s.pose.x>>s.pose.y>>s.pose.angle) ||
+           !std::isfinite(s.time)||!std::isfinite(s.pose.x)||
+           !std::isfinite(s.pose.y)||!std::isfinite(s.pose.angle)||
+           s.time<0.||s.time>best+.01||
+           (i==0 && s.time>1e-5) ||
+           (i>0 && s.time<=samples.back().time) ||
+           std::abs(s.pose.x)>12.||std::abs(s.pose.y)>12.||
+           std::abs(s.pose.angle)>PI+.001 ||
+           std::abs(std::hypot(s.pose.x,s.pose.y)-circuitRadius(circuit_,std::atan2(s.pose.y,s.pose.x)))>.7)
+            return false;
+        samples.push_back(s);
+    }
+    std::string trailing;
+    if(in>>trailing)return false;
+    if(std::abs(samples.back().time-best)>.02)return false;
+    bestGhostLap_.swap(samples);
+    bestLapTime_=best;
+    return true;
+}
 void Game::startGhostLap() {
     ghostLap_.clear();
     ghostSampleInterval_ = 0.;

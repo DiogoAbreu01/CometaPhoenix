@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <stdexcept>
 #define CHECK(x) do{if(!(x)){std::cerr<<"ERRO em "<<__LINE__<<": "<<#x<<"\n";std::exit(1);}}while(false)
 int main(){using namespace phoenix;
@@ -54,6 +56,16 @@ int main(){using namespace phoenix;
  CHECK(denseGhost.bestLapTime()==denseGhost.lastLapTime());
  CHECK(denseGhost.ghostPose().x==fasterLapStart.x);
  CHECK(denseGhost.ghostPose().y==fasterLapStart.y);
+ const auto savedTime=denseGhost.bestLapTime();
+ const auto file=std::filesystem::temp_directory_path()/"cometa_phoenix_record_test.txt";
+ CHECK(denseGhost.saveRecord(file));
+ Game restored;CHECK(restored.loadRecord(file));CHECK(restored.hasGhost());
+ CHECK(restored.bestLapTime()==savedTime);
+ CHECK(std::isfinite(restored.ghostPose().x));
+ restored.setCircuit(Circuit::Coast);CHECK(!restored.loadRecord(file));
+ {std::ofstream out(file,std::ios::trunc);out<<"PHOENIX_GHOST_V1 0 0 nan 2\n";}
+ CHECK(!restored.loadRecord(file));CHECK(!restored.hasGhost());
+ std::error_code rmEc;std::filesystem::remove(file,rmEc);
  denseGhost.restart();CHECK(!denseGhost.hasGhost());
  for(auto weather:{Weather::Sunny,Weather::Rain,Weather::Snow}) {
      Game lapTest(42);lapTest.setAutopilot(true);lapTest.setWeather(weather);

@@ -48,3 +48,6 @@ Audio: engine wavetable original com seis marchas virtuais e SFX procedurais dis
 ## Fantasma da melhor volta (0.9.11)
 
 Uma volta v√°lida grava a trajet√≥ria C++17 na mem√≥ria (m√°ximo de 4096 amostras); nas voltas seguintes, o fantasma ciano reproduz o recorde com interpola√ß√£o. A tecla G alterna sua visibilidade. Trocar de circuito ou reiniciar apaga a grava√ß√£o. N√£o existe salvamento entre partidas. O fantasma n√£o colide com o kart. [Captura real na RX 580](docs/screenshots/0911-ghost-fullhd.jpg).
+
+## 0.9.12 ó recordes persistentes
+O melhor tempo e a trajetÛria do fantasma s„o gravados no diretÛrio de preferÍncias do usu·rio (SDL2), separados por pista e clima. N„o precisam de nuvem. Recordes inv·lidos s„o rejeitados, e benchmarks n„o alteram arquivos pessoais. A mudanÁa do clima no meio da volta invalida a tentativa de recorde.

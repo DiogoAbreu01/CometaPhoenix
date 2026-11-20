@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <memory>
@@ -26,7 +27,7 @@ public:
     void update(const Input& input, double dt);
     void setCircuit(Circuit circuit);
     Circuit circuit() const noexcept { return circuit_; }
-    void setWeather(Weather w) noexcept { weather_ = w; }
+    void setWeather(Weather w) noexcept { if(weather_!=w && worldTime_>0.)validLap_=false; weather_ = w; }
     void restart(std::uint32_t seed = 42);
     void requestDamage(const std::string& component="carenagem", double severity=10);
     void requestCollision(double speedKmh,double incidence,bool left,bool front);
@@ -46,6 +47,8 @@ public:
     double bestLapTime() const noexcept { return bestLapTime_; }
     bool hasGhost() const noexcept;
     GhostPose ghostPose() const noexcept;
+    bool saveRecord(const std::filesystem::path& file) const;
+    bool loadRecord(const std::filesystem::path& file);
     bool validLap() const noexcept { return validLap_; }
     int validCompletedLaps() const noexcept { return validCompletedLaps_; }
     int targetLaps() const noexcept { return targetLaps_; }

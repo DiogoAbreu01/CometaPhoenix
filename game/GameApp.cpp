@@ -40,6 +40,8 @@ void* SDL_GL_GetProcAddress(const char*);
 std::uint32_t SDL_GetTicks();
 void SDL_Delay(std::uint32_t);
 const char* SDL_GetError();
+char* SDL_GetPrefPath(const char*,const char*);
+void SDL_free(void*);
 struct SDL_AudioSpec {int freq; std::uint16_t format; std::uint8_t channels,silence; std::uint16_t samples,padding; std::uint32_t size; void (*callback)(void*,std::uint8_t*,int); void* userdata;};
 std::uint32_t SDL_OpenAudioDevice(const char*,int,const SDL_AudioSpec*,SDL_AudioSpec*,int);
 void SDL_PauseAudioDevice(std::uint32_t,int);
@@ -333,6 +335,17 @@ int main(int argc,char**argv){
   gl.BindVertexArray(uiVAO);gl.BindBuffer(ARRAY,uiVBO);gl.EnableVertexAttribArray(0);gl.VertexAttribPointer(0,2,FLOAT,0,6*sizeof(float),nullptr);gl.EnableVertexAttribArray(1);gl.VertexAttribPointer(1,4,FLOAT,0,6*sizeof(float),reinterpret_cast<const void*>(2*sizeof(float)));
   gl.BindVertexArray(fontVAO);gl.BindBuffer(ARRAY,fontVBO);gl.EnableVertexAttribArray(0);gl.VertexAttribPointer(0,2,FLOAT,0,8*sizeof(float),nullptr);gl.EnableVertexAttribArray(1);gl.VertexAttribPointer(1,2,FLOAT,0,8*sizeof(float),reinterpret_cast<const void*>(2*sizeof(float)));gl.EnableVertexAttribArray(2);gl.VertexAttribPointer(2,4,FLOAT,0,8*sizeof(float),reinterpret_cast<const void*>(4*sizeof(float)));
   phoenix::Game game(42);game.setCircuit((phoenix::Circuit)initialCircuit);game.setTargetLaps(initialLaps);game.setWeather((phoenix::Weather)initialWeather);game.setAutopilot(autoPilot);
+  std::filesystem::path recordDir;
+  if(!benchmark){
+    if(char* pref=SDL_GetPrefPath("Cometa","Phoenix")){recordDir=pref;SDL_free(pref);}
+  }
+  auto recordFile=[&](){return recordDir/("record_c"+std::to_string((int)game.circuit())+"_w"+std::to_string((int)game.weather())+".phx");};
+  double recordedBest=0.;
+  auto reloadRecord=[&](){
+    if(!recordDir.empty())game.loadRecord(recordFile());
+    recordedBest=game.bestLapTime();
+  };
+  reloadRecord();
   if(forceGarage){game.requestDamage("carenagem",12);for(int i=0;i<150;i++)game.update({},.05);}
   std::size_t knownDamageEvents=game.simulator().danos().tamanho();
   auto knownPhase=game.simulator().fase();
@@ -353,18 +366,18 @@ int main(int argc,char**argv){
      if(k==13||k==1073741912){menuOpen=false;}
      if(k==1073741892){fullscreen=!fullscreen;SDL_SetWindowFullscreen(window,fullscreen?0x00001001u:0u);}
      if(k=='q')quality=(quality+1)%4;
-     if(k=='l' && menuOpen){const int n=game.targetLaps();game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
-     if(k=='t' && menuOpen){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%3));smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+     if(k=='l' && menuOpen){const int n=game.targetLaps();game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);reloadRecord();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+     if(k=='t' && menuOpen){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%3));reloadRecord();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
      if(!menuOpen){
        if(k=='m')mapOpen=!mapOpen;
        if(k=='g')ghostVisible=!ghostVisible;
        if(k=='v')muted=!muted;
        if(k=='p')paused=!paused;
-       if(k=='r'){game.restart();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+       if(k=='r'){game.restart();reloadRecord();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
        if(k=='c')game.setAutopilot(!game.autopilot());
        if(k=='x')game.requestDamage("carenagem",10.);
        if(k=='z')game.requestDamage("chassi",18.);
-       if(k>='1'&&k<='5')game.setWeather((phoenix::Weather)(k-'1'));
+       if(k>='1'&&k<='5'){game.setWeather((phoenix::Weather)(k-'1'));reloadRecord();}
      }
     }
    }
@@ -373,6 +386,12 @@ int main(int argc,char**argv){
    std::uint32_t now=SDL_GetTicks();double dt=std::min(.075,(now-ticks)*.001);ticks=now;
    if(maxFrames>0)dt=1.0/60.0;
    if(!paused && !menuOpen){accumulator+=dt;int steps=0;while(accumulator>=1./120.&&steps<12){game.update(in,1./120.);accumulator-=1./120.;++steps;}if(steps==12)accumulator=0;if(game.garage()&&!benchmark){float direction=(in.right?1.f:0.f)-(in.left?1.f:0.f);orbit+=(float)dt*(direction!=0?direction*1.45f:.22f);}else orbit+=(float)dt*.27f;}
+   if(!benchmark && !recordDir.empty() && game.bestLapTime()>0. &&
+       (recordedBest==0. || game.bestLapTime()<recordedBest-.000001)){
+     const bool saved=game.saveRecord(recordFile());
+     recordedBest=game.bestLapTime();
+     if(!saved)std::cerr<<"Aviso: falha ao salvar recorde em "<<recordFile().string()<<"\n";
+   }
    smx+=(float)(game.vehicle().x-smx)*std::min(1.0,dt*3.4);smy+=(float)(game.vehicle().y-smy)*std::min(1.0,dt*3.4);
    int w=0,h=0;SDL_GL_GetDrawableSize(window,&w,&h);w=std::max(320,w);h=std::max(240,h);
    // Qualidade: renderizacao a .65/.82/1.0/1.0 da resolucao nativa;
