@@ -64,8 +64,11 @@ void main(){
  }
  if(u_finish>4.5&&u_finish<5.5){
    coat=vec2(.68,clamp(.26+.50*normalFootprint,.26,.55));
+   // Sakura Edition: original pearl metalwork with muted wine-red lacquer fairings.
+   if(base.g>base.r*1.24 && base.b>base.r*1.16)
+       base=mix(vec3(.42,.095,.18),vec3(.72,.28,.37),clamp(base.g*1.6,0.,1.));
    float pearl=pow(1.0-max(dot(n,v),0.0),3.0);
-   base=mix(base,base+vec3(.02,.10,.10),pearl*.55);
+   base=mix(base,base+vec3(.09,.025,.045),pearl*.42);
  }
  float ao=mix(.46,1.0,smoothstep(.05,.54,v_world.z))*(.75+.25*max(n.z,0.));
  vec3 col=base*(.15+.18*max(0.0,n.z))*(1.0-metal*.55)*ao;
@@ -102,8 +105,8 @@ void main(){
  col=mix(col,vec3(.52,.045,.018),broken*wound*(.30+.15*streak));
  // Micro-scratches and fading scar are localized only to the damaged component.
  float rim=pow(1.0-max(dot(n,v),0.0),4.0);
- if(u_finish>6.5)col+=vec3(.0,.22,.23);
- col+=(vec3(.024,.11,.13)*rim)*(u_finish>6.5?2.3:.36);
+ if(u_finish>6.5)col+=vec3(.22,.045,.12);
+ col+=(vec3(.15,.048,.085)*rim)*(u_finish>6.5?2.0:.36);
  // ACES approximation maintains detailed highlights without white clipping.
  vec3 mapped=(col*(2.51*col+.03))/(col*(2.43*col+.59)+.14);
  mapped=clamp(mapped,0.0,1.0);

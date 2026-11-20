@@ -11,14 +11,14 @@ namespace phoenix {
 namespace {constexpr double PI=3.14159265358979323846;
 struct Shape {double base,a3,a5,a7;};
 Shape shape(Circuit c) noexcept {
-    switch(c){case Circuit::Alpine:return {5.35,.94,.22,.12};case Circuit::Coast:return {5.85,.32,.58,.08};default:return {4.65,.62,.34,.22};}
+    switch(c){case Circuit::Alpine:return {5.35,.94,.22,.12};case Circuit::Coast:return {5.85,.32,.58,.08};case Circuit::Sakura:return {5.15,.67,.29,.14};default:return {4.65,.62,.34,.22};}
 }
 double derivative(Circuit c,double a) noexcept {auto s=shape(c);return -3*s.a3*std::sin(3*a+.3)+5*s.a5*std::cos(5*a-.6)-7*s.a7*std::sin(7*a+1.2);}
 double secondDerivative(Circuit c,double a) noexcept {auto s=shape(c);return -9*s.a3*std::cos(3*a+.3)-25*s.a5*std::sin(5*a-.6)-49*s.a7*std::cos(7*a+1.2);}
 double clamp(double a,double l,double h){return std::max(l,std::min(h,a));}
 double normAngle(double a) {return std::atan2(std::sin(a),std::cos(a));}
 }
-const char* circuitName(Circuit c) noexcept {switch(c){case Circuit::Alpine:return "ALPES";case Circuit::Coast:return "LITORAL";default:return "FLORESTA";}}
+const char* circuitName(Circuit c) noexcept {switch(c){case Circuit::Alpine:return "ALPES";case Circuit::Coast:return "LITORAL";case Circuit::Sakura:return "SAKURA TOUGE";default:return "FLORESTA";}}
 double circuitRadius(Circuit c,double a) noexcept {auto s=shape(c);return s.base+s.a3*std::cos(3*a+.3)+s.a5*std::sin(5*a-.6)+s.a7*std::cos(7*a+1.2);}
 void Game::setCircuit(Circuit c){circuit_=c;restart(seed_);}
 const char* weatherName(Weather w) noexcept {switch(w){case Weather::Sunny:return "SOL";case Weather::Rain:return "CHUVA";case Weather::Snow:return "NEVE";case Weather::Storm:return "TEMPESTADE";case Weather::Fog:return "NEBLINA";}return "?";}

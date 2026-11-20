@@ -1,0 +1,9 @@
+# Raw pixel arrays and game meshes must retain exact bytes on every OS.
+*.rgb binary
+*.rgba binary
+*.r8 binary
+*.mesh binary
+*.glb binary
+*.png binary
+*.jpg binary
+*.jpeg binary

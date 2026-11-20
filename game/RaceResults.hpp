@@ -47,7 +47,7 @@ inline RaceOutcome makeRaceOutcome(const Game& game,const std::array<RivalAI,2>&
 }
 inline bool appendRaceHistory(const std::filesystem::path& path,const RaceOutcome& result) {
     static constexpr const char* header="format,circuit,weather,completed_laps,target_laps,rivals,position,elapsed_s,best_lap_s,damage_events,status";
-    if(path.empty() || static_cast<int>(result.circuit)<0 || static_cast<int>(result.circuit)>2 ||
+    if(path.empty() || static_cast<int>(result.circuit)<0 || static_cast<int>(result.circuit)>3 ||
        static_cast<int>(result.weather)<0 || static_cast<int>(result.weather)>4 ||
        result.targetLaps<0 || result.targetLaps>99 ||
        result.completedLaps<0 || result.rivals<0 || result.rivals>2 ||
@@ -109,7 +109,7 @@ inline std::vector<RaceOutcome> recentRaceHistory(const std::filesystem::path& p
         try{
             RaceOutcome r{};
             const int c=std::stoi(f[1]),w=std::stoi(f[2]);
-            if(c<0 || c>2 || w<0 || w>4)continue;
+            if(c<0 || c>3 || w<0 || w>4)continue;
             r.circuit=static_cast<Circuit>(c);r.weather=static_cast<Weather>(w);
             r.completedLaps=std::stoi(f[3]);r.targetLaps=std::stoi(f[4]);
             r.rivals=std::stoi(f[5]);r.position=std::stoi(f[6]);

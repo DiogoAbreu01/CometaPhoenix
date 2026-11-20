@@ -12,7 +12,7 @@ int main(int argc,char** argv){
  if(argc==3 && std::string(argv[1])=="--minutes")minutes=std::atoi(argv[2]);
  if(minutes<1 || minutes>60){std::cerr<<"Invalid duration\n";return 2;}
  constexpr double dt=1.0/60.0;
- for(auto circuit:{Circuit::Forest,Circuit::Alpine,Circuit::Coast}){
+ for(auto circuit:{Circuit::Forest,Circuit::Alpine,Circuit::Coast,Circuit::Sakura}){
   Game game(42);game.setCircuit(circuit);game.setTargetLaps(0);game.setAutopilot(true);
   std::array<RivalAI,2> rivals{};
   rivals[0].setDifficulty(RivalDifficulty::Hard);

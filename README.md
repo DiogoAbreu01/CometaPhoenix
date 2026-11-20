@@ -1,6 +1,6 @@
-# Cometa Phoenix — 0.9.17 (candidato nativo)
+# Cometa Phoenix — 0.10.0 (JDM Sakura Edition)
 
-Projeto ECOP13A / LAB12–LAB14. Corrida 2D com três circuitos e cinco condições climáticas, oficina 3D com diagnóstico, regeneração e abandono. Aplicativo e motor C++17 com SDL2/OpenGL 3.3 e shaders GLSL. Não depende de navegador nem JavaScript. Modelo físico didático, não certificado.
+Projeto ECOP13A / LAB12–LAB14. Corrida 2D com quatro circuitos e cinco condições climáticas, oficina 3D com diagnóstico, regeneração e abandono. Aplicativo e motor C++17 com SDL2/OpenGL 3.3 e shaders GLSL. Não depende de navegador nem JavaScript. Modelo físico didático, não certificado.
 
 ## Conceitos da disciplina
 - `include/cometa/Simulation.hpp`: `Historico<T>` utilizado com `EventoDano` e `AmostraTelemetria`; função genérica `limitar<T>`.
@@ -77,3 +77,24 @@ No menu, F liga/desliga a guia de trajetoria; B alterna esquemas de teclado. Col
 
 ## 0.9.17 — integridade de voltas em disputa
 Contato com rivais em velocidade moderada nao cancela a contagem da volta nem impede a chegada; invalida somente o recorde fantasma daquela volta (nao foi limpa). Dano grave requer maior velocidade de fechamento. Ultrapassagens e pilotos rivais continuam sujeitos ao simulador simplificado de contato.
+
+## 0.10.0 — Sakura Touge / visual JDM
+
+O quarto circuito, Sakura Touge (indice 3), e a pista inicial. O menu foi
+redesenhado com fotografia cinematografica tratada, sacadas japonesas e uma
+identidade editorial em vermelho cereja, rosa sakura, perola, ameixa e ambar.
+HUD e oficina 3D tiveram suas cores e composicoes harmonizadas.
+As cerejeiras usam sprites autorais em um shader 2D, junto de petalas animadas,
+rio, estrada, lanternas, templo e quatro portais torii.
+O kart ganhou pintura Sakura Edition 86 em branco perola e vinho metalizado.
+
+Controles de menu: Enter iniciar, T pista, L voltas, K rivais, D dificuldade,
+H historico, B layout do teclado, F guia, N cores alternativas, -/+ volume.
+Em corrida: WASD/setas dirigir, C piloto automatico, P pausa, R reiniciar,
+M mapa inteiro. A opcao --circuit 3 --overview permite capturar a planta geral.
+
+Ferramentas de arte: tools/make_sakura_canopy.py, tools/make_jdm_kart.py
+e tools/make_jdm_menu.py. Os resultados gerados estao inclusos no pacote;
+a compilacao e a execucao nao dependem de Python.
+O editor de assets requer Pillow e NumPy, alem de fontes do Windows.
+Veja docs/ART_DIRECTION_JDM.md para capturas e limitacoes.

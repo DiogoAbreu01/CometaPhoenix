@@ -24,7 +24,7 @@ int main() {
     using namespace phoenix;
     constexpr double dt = 1.0 / 60.0;
     constexpr double turn = 6.28318530717958647692;
-    for (Circuit circuit : {Circuit::Forest, Circuit::Alpine, Circuit::Coast}) {
+    for (Circuit circuit : {Circuit::Forest, Circuit::Alpine, Circuit::Coast, Circuit::Sakura}) {
         double sunnyTime = 0.0;
         for (Weather weather : {Weather::Sunny, Weather::Rain, Weather::Snow,
                                 Weather::Storm, Weather::Fog}) {

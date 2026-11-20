@@ -127,8 +127,8 @@ void main(){float a=texture(atlas,uv).r;FragColor=vec4(tint.rgb,tint.a*a);}
 const std::string MENU_FRAGMENT=R"GLSL(#version 330 core
 in vec2 uv;out vec4 FragColor;uniform sampler2D imageTex;uniform float u_time;
 void main(){vec2 tc=vec2(uv.x,1.-uv.y);vec3 c=texture(imageTex,tc).rgb;
-float left=smoothstep(.00,.70,uv.x);c*=mix(.36,.88,left);
-c+=vec3(.0,.015,.02)*(.5+.5*sin(u_time*.7));
+float left=smoothstep(.06,.71,uv.x);c*=mix(.75,1.0,left);
+c+=vec3(.016,.004,.018)*(.5+.5*sin(u_time*.7));
 c=pow(c,vec3(.98));FragColor=vec4(c,1.);}
 )GLSL";
 const std::string UPSCALE_FRAGMENT=R"GLSL(#version 330 core
@@ -163,7 +163,8 @@ struct RenderTarget{
  }
 };
 struct Color {float r{},g{},b{},a{1.};};
-const Color WHITE{.93f,.96f,.96f,1},MUTED{.47f,.64f,.68f,1},CYAN{.27f,.98f,.83f,1},WARN{1.f,.7f,.25f,1},BAD{1.f,.30f,.23f,1};
+const Color WHITE{.97f,.94f,.91f,1},MUTED{.72f,.72f,.75f,1},CYAN{.98f,.63f,.72f,1},BAD{1.f,.37f,.42f,1};
+const Color INK{.038f,.050f,.088f,.88f},ROSE{.97f,.60f,.71f,1},GOLD{1.f,.76f,.49f,1};
 struct UI {
  std::vector<float> verts,letterVerts;
  void tri(float x,float y,Color c){verts.insert(verts.end(),{x,y,c.r,c.g,c.b,c.a});}
@@ -202,113 +203,155 @@ void setf(GLApi& gl,GLuint p,const char*k,float f){int u=uniform(gl,p,k);if(u>=0
 void set2(GLApi& gl,GLuint p,const char*k,float x,float y){int u=uniform(gl,p,k);if(u>=0)gl.Uniform2f(u,x,y);}
 #include "NativeExtras.hpp"
 float partId(const std::string& s){if(s=="chassi")return 1;if(s=="carenagem")return 2;if(s=="suspensao")return 3;if(s=="pneu_de")return 11;if(s=="pneu_dd")return 12;if(s=="pneu_te")return 13;if(s=="pneu_td")return 14;if(s.find("pneu_")==0)return 4;if(s=="motor")return 5;if(s=="freio")return 6;return 3;}
-void drawHUD(UI & ui,const phoenix::Game &game,const std::array<phoenix::RivalAI,2>& rivals,int rivalCount,int w,int h,int quality,bool paused,double fps,bool ghostVisible){
- auto &sim=game.simulator();auto &veh=game.vehicle();bool shop=game.garage();float S=std::max(.30f,std::min({1.7f,(float)w/1280.f,(float)h/720.f}));
- ui.rect(0,0,(float)w,82*S,{.018f,.037f,.053f,.91f});ui.rect(0,79*S,(float)w,2*S,CYAN);
- ui.text("COMETA",30*S,19*S,4*S,WHITE);ui.text("PHOENIX",205*S,19*S,4*S,CYAN);
- ui.text("REGENERATIVE RACING LAB / C++17",31*S,53*S,1.5f*S,MUTED);
- ui.text(shop?"GARAGEM 3D / DIAGNOSTICO":"PISTA 2D / CONTROLE EM TEMPO REAL",std::max(30.f,(float)w-445*S),29*S,2*S,WHITE);
- if(!shop){
-  ui.rect(25*S,103*S,277*S,226*S,{.012f,.029f,.041f,.83f});ui.rect(25*S,103*S,3*S,226*S,CYAN);
-  ui.text("TELEMETRIA",44*S,119*S,2.8f*S,CYAN);
-  ui.text("VELOCIDADE",44*S,164*S,2*S,MUTED);ui.text(fmt(veh.speed),44*S,187*S,5.4f*S,WHITE);ui.text("KM/H",165*S,207*S,2*S,CYAN);
-  ui.text("ADERENCIA",44*S,260*S,1.9f*S,MUTED);
-  ui.rect(153*S,259*S,117*S,8*S,{.12f,.22f,.24f,1});ui.rect(153*S,259*S,117*S*(float)game.handling().effectiveGrip,8*S,CYAN);
-  ui.text("PNEUS "+fmt(game.handling().tireTemperatureC,0)+"C  DESG "+fmt(game.handling().tireWear*100.,1)+"%",44*S,308*S,1.5f*S,MUTED);
-  if(rivalCount>0){
-    const int position=phoenix::racePosition(game,rivals,rivalCount);
-    ui.text("POSICAO "+intStr(position)+"/"+intStr(rivalCount+1),44*S,284*S,1.6f*S,WARN);
-  }
-  ui.rect((float)w-267*S,103*S,242*S,193*S,{.013f,.031f,.046f,.88f});
-  ui.text("CONDICAO",(float)w-246*S,118*S,2.4f*S,MUTED);
-  ui.text(phoenix::weatherName(game.weather()),(float)w-245*S,155*S,2.9f*S,CYAN);
-  ui.text("VOLTA "+intStr(game.finished()?game.validCompletedLaps():game.validCompletedLaps()+1)+(game.targetLaps()>0?"/"+intStr(game.targetLaps()):" LIVRE"),(float)w-245*S,201*S,2.2f*S,WHITE);
-  ui.text("TEMPO "+fmt(game.currentLapTime(),2)+" S",(float)w-245*S,229*S,1.7f*S,game.validLap()?WHITE:BAD);
-  ui.text("MELHOR "+(game.bestLapTime()>0.?fmt(game.bestLapTime(),2)+" S":std::string("--")),(float)w-245*S,259*S,1.7f*S,CYAN);
-  if(game.hasGhost())ui.text(ghostVisible?"FANTASMA ON":"FANTASMA OFF",(float)w-245*S,282*S,1.45f*S,ghostVisible?CYAN:MUTED);
-  // Conta-giros circular estilo HUD de corridas; um unico VBO por frame.
-  float cx=(float)w-132*S,cy=(float)h-187*S;
-  ui.ring(cx,cy,66*S,4*S,2.45f,4.58f,{.14f,.25f,.28f,.85f});
-  ui.ring(cx,cy,66*S,6*S,2.45f,4.58f*std::min(1.f,(float)(veh.speed/102.)),CYAN);
-  ui.text(fmt(veh.speed,0),cx-48*S,cy-12*S,5.0f*S,WHITE);
-  ui.text("KM/H",cx-28*S,cy+30*S,1.6f*S,MUTED);
-  // Mini mapa top-down com o kart ativo.
-  const float mx=(float)w-107*S,my=365*S;
-  ui.rect(mx-76*S,my-59*S,152*S,134*S,{.012f,.033f,.041f,.83f});
-  for(int i=0;i<46;i++){
-    float a=6.2831853f*i/46.,b=6.2831853f*(i+1)/46.;
-    float ra=(float)phoenix::circuitRadius(game.circuit(),a)*8*S,rb=(float)phoenix::circuitRadius(game.circuit(),b)*8*S;
-    ui.line(mx+ra*std::cos(a),my+ra*.7f*std::sin(a),mx+rb*std::cos(b),my+rb*.7f*std::sin(b),6*S,{.30f,.48f,.49f,.9f});
-  }
-  float ang=std::atan2((float)veh.y,(float)veh.x),ra=(float)phoenix::circuitRadius(game.circuit(),ang)*8*S;
-  ui.rect(mx+ra*std::cos(ang)-4*S,my+ra*.7f*std::sin(ang)-4*S,8*S,8*S,CYAN);
-  for(int i=0;i<rivalCount;++i){
-     const auto other=rivals[i].pose();
-     ui.rect(mx+float(other.x)*8*S-3*S,my+float(other.y)*5.6f*S-3*S,6*S,6*S,i==0?BAD:WARN);
-  }
-  ui.text("MAPA",mx-62*S,my-55*S,1.5f*S,MUTED);
-  if(game.cinematic()>0){ui.rect(0,(float)h*.46f,(float)w,90*S,{.31f,.024f,.02f,.6f});ui.text("ALERTA DE COLISAO",(float)w*.24f,(float)h*.48f,4.5f*S,BAD);}
+
+// Studio JDM: editorial typography, restrained glass cards, sakura pink + amber.
+void drawHUD(UI& ui,const phoenix::Game& game,
+    const std::array<phoenix::RivalAI,2>& rivals,int rivalCount,
+    int w,int h,int quality,bool paused,double fps,bool ghostVisible){
+ const float S=std::max(.31f,std::min({1.42f,float(w)/1280.f,float(h)/720.f}));
+ const auto& v=game.vehicle();const auto& sim=game.simulator();
+ const bool workshop=game.garage();
+ const int position=phoenix::racePosition(game,rivals,rivalCount);
+ ui.rect(0,0,float(w),70*S,{.023f,.029f,.054f,.86f});
+ ui.rect(0,68*S,float(w),2*S,ROSE);
+ ui.rect(27*S,15*S,3*S,36*S,ROSE);
+ ui.text("COMETA",44*S,16*S,3.15f*S,WHITE);
+ ui.text("PHOENIX",169*S,16*S,3.15f*S,CYAN);
+ ui.text("JDM / REGENERATIVE RACING",44*S,47*S,1.13f*S,MUTED);
+ ui.text(game.circuit()==phoenix::Circuit::Sakura?"JAPAN / SAKURA TOUGE":
+    phoenix::circuitName(game.circuit()),std::max(335.f,float(w)-370*S),17*S,1.72f*S,WHITE);
+ ui.text(std::string(phoenix::weatherName(game.weather()))+" / "+
+    (workshop?"PIT GARAGE":"NIGHT RUN"),std::max(335.f,float(w)-370*S),46*S,1.40f*S,CYAN);
+ if(!workshop){
+    const float bx=28*S,by=float(h)-220*S;
+    ui.rect(bx,by,248*S,155*S,INK);
+    ui.rect(bx,by,4*S,155*S,ROSE);
+    ui.text("VELOCIDADE / SPEED",bx+18*S,by+13*S,1.53f*S,MUTED);
+    ui.text(fmt(v.speed,0),bx+16*S,by+48*S,7.0f*S,WHITE);
+    ui.text("KM/H",bx+153*S,by+84*S,1.7f*S,CYAN);
+    ui.rect(bx+18*S,by+124*S,206*S,5*S,{.28f,.31f,.36f,.85f});
+    ui.rect(bx+18*S,by+124*S,float(206*S*std::clamp(v.speed/102.,0.,1.)),5*S,ROSE);
+    ui.text("TIRE "+fmt(game.handling().tireTemperatureC,0)+"C   WEAR "+
+      fmt(game.handling().tireWear*100.,0)+"%",bx+18*S,by+136*S,1.18f*S,MUTED);
+    ui.rect(28*S,90*S,260*S,81*S,{.027f,.037f,.072f,.76f});
+    ui.text("CLASSIFICACAO",43*S,103*S,1.50f*S,CYAN);
+    ui.text("P"+intStr(position)+"/"+intStr(rivalCount+1),43*S,129*S,3.15f*S,WHITE);
+    ui.text("VOLTA "+intStr(game.validCompletedLaps()+1)+
+       (game.targetLaps()>0?"/"+intStr(game.targetLaps()):"  FREE"),132*S,134*S,1.60f*S,GOLD);
+    // Deliberately compact timing display leaves the actual track visible.
+    const float rx=float(w)-261*S;
+    ui.rect(rx,91*S,235*S,97*S,INK);
+    ui.rect(rx,91*S,235*S,2*S,ROSE);
+    ui.text("TEMPO DE VOLTA",rx+14*S,104*S,1.42f*S,MUTED);
+    ui.text(fmt(game.currentLapTime(),2)+" S",rx+14*S,127*S,2.55f*S,WHITE);
+    ui.text("PB "+(game.bestLapTime()>0.?fmt(game.bestLapTime(),2):std::string("--")),
+         rx+14*S,164*S,1.33f*S,GOLD);
+    const float mx=float(w)-132*S,my=293*S;
+    ui.rect(float(w)-261*S,207*S,235*S,173*S,{.023f,.037f,.072f,.81f});
+    ui.text("MAPA / OVERVIEW",float(w)-241*S,219*S,1.30f*S,MUTED);
+    for(int i=0;i<80;++i){
+       float a=6.2831853f*i/80.f,b=6.2831853f*(i+1)/80.f;
+       float ra=float(phoenix::circuitRadius(game.circuit(),a))*10.2f*S;
+       float rb=float(phoenix::circuitRadius(game.circuit(),b))*10.2f*S;
+       ui.line(mx+ra*std::cos(a),my+ra*.60f*std::sin(a),
+               mx+rb*std::cos(b),my+rb*.60f*std::sin(b),3.2f*S,{.86f,.75f,.77f,.93f});
+    }
+    ui.rect(mx+float(v.x)*10.2f*S-4*S,my+float(v.y)*6.12f*S-4*S,8*S,8*S,CYAN);
+    for(int i=0;i<rivalCount;++i){
+       auto other=rivals[i].pose();
+       ui.rect(mx+float(other.x)*10.2f*S-2.5f*S,
+               my+float(other.y)*6.12f*S-2.5f*S,5*S,5*S,i?GOLD:BAD);
+    }
+    if(game.hasGhost())ui.text(ghostVisible?"GHOST ON":"GHOST OFF",
+        float(w)-239*S,354*S,1.18f*S,ghostVisible?CYAN:MUTED);
+    if(game.cinematic()>0){
+        ui.rect(float(w)*.30f,float(h)*.45f,float(w)*.40f,73*S,{.31f,.063f,.10f,.90f});
+        ui.rect(float(w)*.30f,float(h)*.45f,float(w)*.40f,3*S,BAD);
+        ui.text("IMPACT / PIT ALERT",float(w)*.345f,float(h)*.47f,3.0f*S,WHITE);
+    }
  }else{
-  ui.rect(22*S,104*S,328*S,261*S,{.01f,.03f,.042f,.86f});ui.rect(22*S,104*S,3*S,261*S,CYAN);
-  ui.text("DIAGNOSTICO ESTRUTURAL",43*S,123*S,2.1f*S,CYAN);
-  {
-   const auto& p=sim.componenteMaisCritico();
-   ui.text("PECA: "+p.id,44*S,169*S,2.1f*S,WHITE);
-   ui.text("INTEGRIDADE: "+fmt(p.integridade*100,1)+"%",44*S,205*S,2.1f*S,(p.integridade<.75?BAD:CYAN));
-   ui.text("TENSAO: "+fmt(p.tensaoMPa,1)+" MPA",44*S,238*S,2.1f*S,WHITE);
-   ui.text("FADIGA: "+fmt(p.fadiga,2),44*S,271*S,2.1f*S,MUTED);
-  }
-  ui.text("REGEN: "+fmt(game.repairFraction()*100,0)+"%",44*S,309*S,2.1f*S,CYAN);
-  ui.rect(44*S,335*S,275*S,10*S,{.13f,.2f,.23f,1});ui.rect(44*S,335*S,(float)(275*S*game.repairFraction()),10*S,CYAN);
-  ui.rect((float)w-285*S,105*S,265*S,125*S,{.01f,.031f,.043f,.90f});
-  ui.text("RECURSOS BOX",(float)w-266*S,123*S,2.4f*S,CYAN);
-  ui.text("ENERGIA "+fmt(sim.recursos().bateriaWh,0)+" WH",(float)w-266*S,164*S,2*S,WHITE);
-  ui.text("SELANTE "+fmt(sim.recursos().agenteMl,0)+" ML",(float)w-266*S,195*S,2*S,WHITE);
+    ui.rect(27*S,105*S,340*S,276*S,INK);
+    ui.rect(27*S,105*S,5*S,276*S,ROSE);
+    ui.text("GARAGEM / DIAGNOSTICO",47*S,125*S,2.35f*S,CYAN);
+    const auto& part=sim.componenteMaisCritico();
+    ui.text("COMPONENTE",48*S,174*S,1.52f*S,MUTED);
+    ui.text(part.id,48*S,198*S,2.4f*S,WHITE);
+    ui.text("INTEGRIDADE "+fmt(part.integridade*100,0)+"%",48*S,253*S,1.78f*S,part.integridade<.75?BAD:WHITE);
+    ui.text("ENERGIA "+fmt(sim.recursos().bateriaWh,0)+" WH",48*S,285*S,1.52f*S,MUTED);
+    ui.rect(48*S,330*S,285*S,8*S,{.3f,.30f,.34f,1});
+    ui.rect(48*S,330*S,285*S*float(game.repairFraction()),8*S,ROSE);
+    ui.text("REPAIR "+fmt(game.repairFraction()*100,0)+"%",48*S,347*S,1.47f*S,CYAN);
  }
- ui.rect(0,(float)h-73*S,(float)w,73*S,{.014f,.036f,.05f,.93f});
- ui.rect(0,(float)h-73*S,(float)w,2*S,CYAN);
- ui.text("STATUS: "+game.status(),28*S,(float)h-55*S,1.95f*S,sim.fase()==cometa::Fase::Abandono?BAD:CYAN);
- ui.text(shop?"A/D OU SETAS: GIRAR CAMERA  |  P PAUSA  |  Q GFX  |  R REINICIA":"WASD/SETAS DIRIGIR  |  1-5 CLIMA  |  X DANO  |  R REINICIA  |  P PAUSA  |  Q GFX  |  M MAPA  |  G FANTASMA  |  V SOM",28*S,(float)h-25*S,1.55f*S,MUTED);
- ui.text("FPS "+fmt(fps,0),std::max(0.f,(float)w-255*S),(float)h-52*S,1.7f*S,CYAN);
- ui.text("GFX "+intStr(quality),std::max(0.f,(float)w-116*S),(float)h-52*S,1.8f*S,WARN);
- if(game.finished()){ui.rect(0,(float)h*.39f,(float)w,126*S,{.008f,.05f,.046f,.94f});ui.text("CORRIDA CONCLUIDA  P"+intStr(phoenix::racePosition(game,rivals,rivalCount)),(float)w*.22f,(float)h*.41f,4.4f*S,CYAN);ui.text("TOTAL "+fmt(game.worldTime(),2)+" S  |  R REINICIAR",(float)w*.23f,(float)h*.49f,2.1f*S,WHITE);}
- else if(paused){ui.rect(0,(float)h*.46f,(float)w,70*S,{.005f,.012f,.021f,.82f});ui.text("PAUSADO",(float)w*.38f,(float)h*.48f,4.8f*S,WHITE);}
+ ui.rect(0,float(h)-48*S,float(w),48*S,{.02f,.029f,.051f,.94f});
+ ui.rect(0,float(h)-48*S,float(w),2*S,ROSE);
+ ui.text(game.status(),26*S,float(h)-35*S,1.58f*S,WHITE);
+ ui.text(workshop?"ARROWS OR A/D CAMERA  /  P PAUSE  /  R RESTART":
+   "WASD DRIVE / T COURSE IN MENU / P PAUSE / M MAP / G GHOST / V AUDIO",
+   26*S,float(h)-15*S,1.14f*S,MUTED);
+ ui.text("FPS "+fmt(fps,0)+"   Q "+intStr(quality),
+    std::max(250.f,float(w)-161*S),float(h)-32*S,1.23f*S,GOLD);
+ if(game.finished()){
+    ui.rect(float(w)*.16f,float(h)*.38f,float(w)*.68f,148*S,INK);
+    ui.rect(float(w)*.16f,float(h)*.38f,float(w)*.68f,5*S,ROSE);
+    ui.text("FINISH / P"+intStr(position),float(w)*.24f,float(h)*.40f,5.0f*S,WHITE);
+    ui.text("TIME "+fmt(game.worldTime(),2)+" S   /   R RESTART",float(w)*.24f,float(h)*.51f,1.95f*S,GOLD);
+ }else if(paused){
+    ui.rect(float(w)*.32f,float(h)*.43f,float(w)*.36f,83*S,INK);
+    ui.text("PAUSED",float(w)*.39f,float(h)*.46f,4.6f*S,WHITE);
+ }
 }
-void drawMenu(UI &ui,int w,int h,int quality,phoenix::Circuit circuit,int laps,int rivals,int difficulty,int volumePct,const std::vector<phoenix::RaceOutcome>& history,bool showHistory,int controlLayout,bool accessible){
- const float S=std::max(.28f,std::min({1.4f,(float)w/1280.f,(float)h/720.f}));
- ui.rect(0,0,(float)w,15*S,{.012f,.08f,.09f,.82f});
- ui.rect(35*S,120*S,7*S,245*S,CYAN);
- ui.text("COMETA",65*S,143*S,9*S,WHITE);
- ui.text("PHOENIX",65*S,220*S,9*S,CYAN);
- ui.text("REGENERATIVE RACING",70*S,321*S,2.5f*S,WHITE);
- ui.rect(65*S,383*S,445*S,64*S,{.013f,.24f,.25f,.83f});
- ui.text("[ ENTER ] INICIAR CORRIDA",81*S,399*S,2.9f*S,WHITE);
- ui.rect(65*S,466*S,445*S,190*S,{.008f,.02f,.03f,.84f});
- ui.text(std::string("[ T ] CIRCUITO: ")+phoenix::circuitName(circuit),84*S,482*S,2*S,WHITE);
- ui.text("[ L ] VOLTAS: "+(laps?intStr(laps):std::string("LIVRE")),84*S,518*S,2*S,MUTED);
- ui.text("[K] RIVAIS "+intStr(rivals)+"   [D] IA "+std::string(difficulty==0?"FACIL":difficulty==2?"DIFICIL":"MEDIA"),84*S,554*S,1.8f*S,MUTED);
- ui.text("[ - / + ] VOLUME "+intStr(volumePct)+"%   [ H ] HISTORICO",84*S,592*S,1.7f*S,WHITE);
- ui.text(std::string("[ F ] TRAJETORIA: ")+(accessible?"ASSISTENCIA":"GUIA"),84*S,645*S,1.25f*S,CYAN);
- ui.text(std::string("[ B ] TECLAS: ")+(controlLayout==0?"WASD":controlLayout==1?"IJKL":"SETAS")+
-         (accessible?"   [ N ] CORES ON":"   [ N ] CORES OFF"),84*S,630*S,1.42f*S,MUTED);
+void drawMenu(UI& ui,int w,int h,int quality,phoenix::Circuit circuit,int laps,
+    int rivals,int difficulty,int volumePct,const std::vector<phoenix::RaceOutcome>& history,
+    bool showHistory,int controlLayout,bool accessible){
+ const float S=std::max(.31f,std::min({1.42f,float(w)/1280.f,float(h)/720.f}));
+ const float x=44*S,y=58*S;
+ ui.rect(x,y,525*S,595*S,{.027f,.032f,.064f,.80f});
+ ui.rect(x,y,5*S,595*S,ROSE);
+ ui.rect(x,y,525*S,2*S,{.97f,.68f,.67f,.93f});
+ ui.text("MIDNIGHT TOUGE / GARAGE 01",x+23*S,y+25*S,1.58f*S,GOLD);
+ ui.text("COMETA",x+24*S,y+76*S,7.25f*S,WHITE);
+ ui.text("PHOENIX",x+24*S,y+137*S,7.5f*S,ROSE);
+ ui.text("JAPANESE NIGHT RUN  /  REGENERATIVE RACING",x+27*S,y+219*S,1.34f*S,MUTED);
+ ui.rect(x+23*S,y+259*S,478*S,64*S,{.78f,.32f,.43f,.94f});
+ ui.rect(x+23*S,y+259*S,478*S,3*S,GOLD);
+ ui.text("[ ENTER ]   INICIAR CORRIDA",x+50*S,y+278*S,2.85f*S,WHITE);
+ ui.rect(x+23*S,y+341*S,478*S,116*S,{.034f,.050f,.083f,.91f});
+ ui.text("[ T ]  ESCOLHER PISTA",x+39*S,y+356*S,1.56f*S,GOLD);
+ ui.text(phoenix::circuitName(circuit),x+39*S,y+379*S,3.05f*S,WHITE);
+ const int track=int(circuit);
+ for(int i=0;i<4;++i){
+    ui.rect(x+(41+37*i)*S,y+428*S,26*S,4*S,
+        i==track?ROSE:Color{.29f,.29f,.34f,.7f});
+ }
+ ui.text("0"+intStr(track+1)+" / 04  -  "+(track==3?"JAPAN / HANAMI":"WORLD TOUR"),
+         x+243*S,y+425*S,1.36f*S,MUTED);
+ ui.text("[ L ]  "+(laps?intStr(laps):std::string("FREE"))+" LAPS    [ K ] "+intStr(rivals)+" RIVALS",
+         x+39*S,y+479*S,1.73f*S,WHITE);
+ ui.text("[ D ] AI: "+std::string(difficulty==0?"EASY":difficulty==2?"HARD":"NORMAL")+
+     "     [ - / + ] VOL "+intStr(volumePct)+"%",x+39*S,y+507*S,1.44f*S,MUTED);
+ ui.text(std::string("[ H ] HISTORICO   [ B ] ")+(controlLayout==0?"WASD":controlLayout==1?"IJKL":"SETAS")+"  [ F ] GUIA",
+     x+39*S,y+537*S,1.35f*S,MUTED);
+ ui.text("[ N ] COLORS  "+std::string(accessible?"ALT":"STD")+"   /   Q QUALITY "+intStr(quality),
+     x+39*S,y+558*S,1.36f*S,GOLD);
  if(showHistory){
-    const float hx=550*S,hy=368*S;
-    ui.rect(hx,hy,650*S,286*S,{.009f,.033f,.046f,.94f});
-    ui.text("ULTIMAS CORRIDAS",hx+20*S,hy+17*S,2.35f*S,CYAN);
-    if(history.empty())ui.text("SEM RESULTADOS SALVOS",hx+20*S,hy+68*S,2*S,MUTED);
+    float hx=590*S,hy=315*S;
+    ui.rect(hx,hy,649*S,306*S,{.024f,.035f,.067f,.95f});
+    ui.rect(hx,hy,649*S,3*S,ROSE);
+    ui.text("RECENT RACES / GARAGE LOG",hx+22*S,hy+19*S,2.14f*S,WHITE);
+    if(history.empty())ui.text("NO RUNS RECORDED",hx+22*S,hy+72*S,1.75f*S,MUTED);
     for(std::size_t i=0;i<history.size() && i<5;++i){
-        const auto& a=history[history.size()-1-i];
-        std::string item=std::string(phoenix::circuitName(a.circuit))+"  "+
-            (a.abandoned?"ABANDONO":"P"+intStr(a.position)+"/"+intStr(a.rivals+1))+
-            "  "+fmt(a.elapsedSeconds,1)+"S  "+intStr(a.completedLaps)+" VOLTA(S)";
-        ui.text(item,hx+21*S,hy+(60+41*i)*S,1.6f*S,a.abandoned?BAD:WHITE);
+       const auto& a=history[history.size()-1-i];
+       std::string item=std::string(phoenix::circuitName(a.circuit))+"   "+
+         (a.abandoned?"RETIRED":"P"+intStr(a.position)+"/"+intStr(a.rivals+1))+
+         "   "+fmt(a.elapsedSeconds,1)+"S";
+       ui.text(item,hx+24*S,hy+(70+40*i)*S,1.56f*S,a.abandoned?BAD:WHITE);
     }
  }
- ui.rect(0,(float)h-60*S,(float)w,60*S,{.009f,.023f,.034f,.89f});
- ui.text("COMETA PHOENIX / C++17 + OPENGL 3.3",34*S,(float)h-39*S,2*S,MUTED);
- ui.text("PERFIL "+intStr(quality),std::max(20.f,(float)w-175*S),(float)h-39*S,2*S,CYAN);
+ ui.rect(0,float(h)-32*S,float(w),32*S,{.018f,.026f,.045f,.92f});
+ ui.text("COMETA PHOENIX / SAKURA TOUGE",29*S,float(h)-21*S,1.33f*S,MUTED);
+ ui.text("JDM / 20XX   -   C++17",std::max(350.f,float(w)-263*S),
+    float(h)-21*S,1.33f*S,ROSE);
 }
-
 void screenshot(GLApi&gl,const std::string&name,int w,int h){
  std::vector<unsigned char> pixels(std::size_t(w)*h*4);gl.ReadPixels(0,0,w,h,RGBA,UNSIGNED_BYTE,pixels.data());
  std::ofstream f(name,std::ios::binary);if(!f)throw std::runtime_error("Sem permissao para salvar screenshot");f<<"P6\n"<<w<<" "<<h<<"\n255\n";for(int y=h-1;y>=0;--y)for(int x=0;x<w;x++){const auto*p=&pixels[4*(std::size_t(y)*w+x)];f.write(reinterpret_cast<const char*>(p),3);}std::cout<<"SCREENSHOT "<<name<<"\n";
@@ -316,12 +359,12 @@ void screenshot(GLApi&gl,const std::string&name,int w,int h){
 } // namespace
 int main(int argc,char**argv){
  try{
-  std::string shot,dataDirOverride;int maxFrames=0;int initialWeather=0;bool autoPilot=false,forceGarage=false,forceMenu=false,benchmark=false,noVsync=false;int initialCircuit=0,initialLaps=3,initialRivals=2,initialDifficulty=1;int initialQuality=2, initialWidth=1280, initialHeight=720;
-  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--screenshot"&&i+1<argc)shot=argv[++i];else if(a=="--frames"&&i+1<argc)maxFrames=std::stoi(argv[++i]);else if(a=="--no-vsync")noVsync=true;else if(a=="--data-dir"&&i+1<argc)dataDirOverride=argv[++i];else if(a=="--autopilot")autoPilot=true;else if(a=="--garage")forceGarage=true;else if(a=="--menu")forceMenu=true;else if(a=="--benchmark")benchmark=true;else if(a=="--width"&&i+1<argc)initialWidth=std::clamp(std::stoi(argv[++i]),640,3840);else if(a=="--height"&&i+1<argc)initialHeight=std::clamp(std::stoi(argv[++i]),480,2160);else if(a=="--laps"&&i+1<argc)initialLaps=std::clamp(std::stoi(argv[++i]),0,99);else if(a=="--circuit"&&i+1<argc)initialCircuit=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--rivals"&&i+1<argc)initialRivals=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--difficulty"&&i+1<argc){std::string v=argv[++i];initialDifficulty=v=="easy"?0:v=="hard"?2:1;}else if(a=="--quality"&&i+1<argc)initialQuality=std::max(0,std::min(3,std::stoi(argv[++i])));else if(a=="--weather"&&i+1<argc){std::string v=argv[++i];initialWeather=v=="rain"?1:v=="snow"?2:v=="storm"?3:v=="fog"?4:0;}}
+  std::string shot,dataDirOverride;int maxFrames=0;int initialWeather=0;bool autoPilot=false,forceGarage=false,forceMenu=false,initialOverview=false,benchmark=false,noVsync=false;int initialCircuit=3,initialLaps=3,initialRivals=2,initialDifficulty=1;int initialQuality=2, initialWidth=1280, initialHeight=720;
+  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--screenshot"&&i+1<argc)shot=argv[++i];else if(a=="--frames"&&i+1<argc)maxFrames=std::stoi(argv[++i]);else if(a=="--no-vsync")noVsync=true;else if(a=="--data-dir"&&i+1<argc)dataDirOverride=argv[++i];else if(a=="--autopilot")autoPilot=true;else if(a=="--garage")forceGarage=true;else if(a=="--overview")initialOverview=true;else if(a=="--menu")forceMenu=true;else if(a=="--benchmark")benchmark=true;else if(a=="--width"&&i+1<argc)initialWidth=std::clamp(std::stoi(argv[++i]),640,3840);else if(a=="--height"&&i+1<argc)initialHeight=std::clamp(std::stoi(argv[++i]),480,2160);else if(a=="--laps"&&i+1<argc)initialLaps=std::clamp(std::stoi(argv[++i]),0,99);else if(a=="--circuit"&&i+1<argc)initialCircuit=std::clamp(std::stoi(argv[++i]),0,3);else if(a=="--rivals"&&i+1<argc)initialRivals=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--difficulty"&&i+1<argc){std::string v=argv[++i];initialDifficulty=v=="easy"?0:v=="hard"?2:1;}else if(a=="--quality"&&i+1<argc)initialQuality=std::max(0,std::min(3,std::stoi(argv[++i])));else if(a=="--weather"&&i+1<argc){std::string v=argv[++i];initialWeather=v=="rain"?1:v=="snow"?2:v=="storm"?3:v=="fog"?4:0;}}
   if(benchmark&&maxFrames==0)maxFrames=300;
   if(SDL_Init(0x00000020 | 0x00004000 | 0x00002000)!=0)throw std::runtime_error(SDL_GetError());
   SDL_GL_SetAttribute(17,3);SDL_GL_SetAttribute(18,3);SDL_GL_SetAttribute(21,1);SDL_GL_SetAttribute(5,1);SDL_GL_SetAttribute(6,24);
-  SDL_Window* window=SDL_CreateWindow("COMETA PHOENIX | REGENERATIVE RACING",0x2FFF0000,0x2FFF0000,initialWidth,initialHeight,0x00000002|0x00000004|0x00000020);
+  SDL_Window* window=SDL_CreateWindow("COMETA PHOENIX | SAKURA TOUGE / JDM",0x2FFF0000,0x2FFF0000,initialWidth,initialHeight,0x00000002|0x00000004|0x00000020);
   if(!window)throw std::runtime_error(SDL_GetError());
   void*ctx=SDL_GL_CreateContext(window);if(!ctx)throw std::runtime_error(SDL_GetError());
   SDL_GL_SetSwapInterval((benchmark||noVsync)?0:1);
@@ -347,10 +390,12 @@ int main(int argc,char**argv){
       throw std::runtime_error("Assets do jogo ausentes: "+assetDir.string());
   auto fontBytes=readBinary(assetDir/"phoenix_ui_atlas.r8",768*360);
   GLuint fontTexture=loadTex(gl,768,360,RED,fontBytes.data());
-  auto menuBytes=readBinary(assetDir/"phoenix_cinematic_menu.rgb",1280*720*3);
+  auto menuBytes=readBinary(assetDir/"phoenix_jdm_menu.rgb",1280*720*3);
   GLuint menuTexture=loadTex(gl,1280,720,RGB,menuBytes.data());
-  auto sprite=readBinary(assetDir/"kart_sprite.rgba",512*512*4);
+  auto sprite=readBinary(assetDir/"kart_jdm_sprite.rgba",512*512*4);
   GLuint spriteTexture=loadTex(gl,512,512,RGBA,sprite.data());
+  auto sakura=readBinary(assetDir/"sakura_canopy.rgba",512*512*4);
+  GLuint sakuraTexture=loadTex(gl,512,512,RGBA,sakura.data());
   const auto asphaltPixels=readBinary(assetDir/"asphalt_photo.rgba",512*512*4);
   const auto asphaltNormals=readBinary(assetDir/"asphalt_normal.rgb",512*512*3);
   GLuint asphaltPhoto=loadTex(gl,512,512,RGBA,asphaltPixels.data(),true);
@@ -404,7 +449,7 @@ int main(int argc,char**argv){
   float masterVolume=.8f;
   int controlLayout=0;bool accessible=false;
   bool showHistory=false;bool racingAssist=true;
-  bool running=true,paused=false,menuOpen=forceMenu||(maxFrames==0&&!forceGarage),fullscreen=false,mapOpen=false,muted=false,ghostVisible=true;
+  bool running=true,paused=false,menuOpen=forceMenu||(maxFrames==0&&!forceGarage),fullscreen=false,mapOpen=initialOverview,muted=false,ghostVisible=true;
   int quality=initialQuality,frame=0; UI ui;ui.verts.reserve(30000);ui.letterVerts.reserve(14000);int measuredRace=0,measuredGarage=0,measuredMenu=0;std::vector<double> frameMs;frameMs.reserve(maxFrames>0?maxFrames:0);double fps=60.,fpsWindow=0.;int fpsFrames=0;
   float orbit=0,smx=(float)game.vehicle().x,smy=(float)game.vehicle().y;
   std::uint32_t ticks=SDL_GetTicks();double accumulator=0;
@@ -429,7 +474,7 @@ int main(int argc,char**argv){
      if(k=='l' && menuOpen){const int n=game.targetLaps();game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
      if(k=='d' && menuOpen){difficulty=(difficulty+1)%3;resetRivals();}
      if(k=='k' && menuOpen){rivalCount=(rivalCount+1)%3;game.restart();reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
-     if(k=='t' && menuOpen){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%3));reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+     if(k=='t' && menuOpen){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%4));reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
      if(!menuOpen){
        if(k=='m')mapOpen=!mapOpen;
        if(k=='g')ghostVisible=!ghostVisible;
@@ -537,6 +582,7 @@ int main(int argc,char**argv){
        gl.ActiveTexture(TEXTURE0);gl.BindTexture(TEXTURE_2D,spriteTexture);gl.Uniform1i(uniform(gl,p,"u_kartSprite"),0);
        gl.ActiveTexture(TEXTURE0+1);gl.BindTexture(TEXTURE_2D,asphaltPhoto);gl.Uniform1i(uniform(gl,p,"u_asphaltPhoto"),1);
        gl.ActiveTexture(TEXTURE0+2);gl.BindTexture(TEXTURE_2D,asphaltNormal);gl.Uniform1i(uniform(gl,p,"u_asphaltNormal"),2);
+       gl.ActiveTexture(TEXTURE0+5);gl.BindTexture(TEXTURE_2D,sakuraTexture);gl.Uniform1i(uniform(gl,p,"u_sakuraSprite"),5);
        gl.ActiveTexture(TEXTURE0);
        setf(gl,p,"u_weather",(float)(int)game.weather());setf(gl,p,"u_speed",(float)game.vehicle().speed);
        setf(gl,p,"u_flash",0.f);setf(gl,p,"u_integrity",(float)ranking.integridade);setf(gl,p,"u_racingAssist",racingAssist?1.f:0.f);
@@ -605,7 +651,7 @@ int main(int argc,char**argv){
   std::cout<<"GAMEPLAY laps="<<game.validCompletedLaps()<<" traversed="<<game.vehicle().lap<<" elapsed="<<game.worldTime()<<" damage_events="<<game.simulator().danos().tamanho()<<" finished="<<game.finished()<<"\n";
     if(!frameMs.empty()){double mean=std::accumulate(frameMs.begin(),frameMs.end(),0.)/frameMs.size();std::cout<<"MEASURED frames="<<frameMs.size()<<" warmup="<<warmup<<" fps="<<1000./mean<<" mean_ms="<<mean<<"\n";std::sort(frameMs.begin(),frameMs.end());auto pct=[&](double p){return frameMs[(std::size_t)((frameMs.size()-1)*p)];};std::cout<<"FRAME_MS p50="<<pct(.5)<<" p95="<<pct(.95)<<" p99="<<pct(.99)<<" max="<<frameMs.back()<<"\n";}
   }
-  scaledScene.reset(gl);gl.DeleteTextures(1,&fontTexture);gl.DeleteTextures(1,&menuTexture);gl.DeleteTextures(1,&spriteTexture);gl.DeleteTextures(1,&asphaltPhoto);gl.DeleteTextures(1,&asphaltNormal);gl.DeleteTextures(1,&concretePhoto);gl.DeleteTextures(1,&concreteNormal);engineAudio.stop();mesh.destroy(gl);
+  scaledScene.reset(gl);gl.DeleteTextures(1,&fontTexture);gl.DeleteTextures(1,&menuTexture);gl.DeleteTextures(1,&spriteTexture);gl.DeleteTextures(1,&sakuraTexture);gl.DeleteTextures(1,&asphaltPhoto);gl.DeleteTextures(1,&asphaltNormal);gl.DeleteTextures(1,&concretePhoto);gl.DeleteTextures(1,&concreteNormal);engineAudio.stop();mesh.destroy(gl);
   gl.DeleteBuffers(1,&uiVBO);gl.DeleteBuffers(1,&fontVBO);gl.DeleteVertexArrays(1,&quadVAO);gl.DeleteVertexArrays(1,&uiVAO);gl.DeleteVertexArrays(1,&fontVAO);
   gl.DeleteProgram(race);gl.DeleteProgram(garage);gl.DeleteProgram(uiProg);gl.DeleteProgram(fontProg);gl.DeleteProgram(menuProg);gl.DeleteProgram(meshProg);gl.DeleteProgram(upProg);
   if(controller)SDL_GameControllerClose(controller);

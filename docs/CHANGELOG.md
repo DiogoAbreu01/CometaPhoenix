@@ -86,3 +86,14 @@ Correcao de conflito entre tecla B (layout) e guia de trajetoria (F), indicador 
 
 ## 0.9.17 — voltas validas e records limpos
 Separacao dos flags validLap_ e cleanLap_ para evitar que contatos leves cancelem voltas necessarias a conclusao da corrida; sem conceder recorde fantasma para volta com toque. Maior tolerancia de dano estrutural na colisao (fechamento >=15 m/s); teste dedicado de finalizacao e ausencia de ghost apos contato. Windows CTest 15/15. Interacao entre karts ainda e heuristica; homologacao manual continua pendente.
+
+## 0.10.0 — visual JDM / Sakura Touge
+
+Nova direcao artistica nativa para menu, HUD e oficina em rosa, ameixa, perola
+e ambar; novo quarto circuito japones com rio, bosques de cerejeiras ilustradas,
+petalas dinamicas, torii, templo e asfalto estilizado.
+Pintura vinho Sakura Edition 86 com 3D correspondente e rivais diferenciados.
+Entrada T escolhe quatro circuitos, sendo Japao a primeira pista exibida.
+GLSL e C++17 continuam com fontes e compilacao existentes.
+Testes CTest ampliados para clima, rival AI e stress no quarto circuito.
+O projeto continua kart top-down 2D com oficina 3D, nao simulador JDM AAA.

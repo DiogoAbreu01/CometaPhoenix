@@ -25,6 +25,7 @@ uniform float u_box;
 uniform float u_night;
 uniform float u_circuit;
 uniform sampler2D u_kartSprite;
+uniform sampler2D u_sakuraSprite;
 uniform sampler2D u_asphaltPhoto,u_asphaltNormal;
 #define PI 3.14159265359
 float hash21(vec2 p){p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32);return fract(p.x*p.y);}
@@ -56,12 +57,102 @@ vec3 forestDetails(vec2 p,vec3 base,float distanceToTrack){
 }
 float sdBox(vec2 p,vec2 b){vec2 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,q.y),0.);}
 mat2 rot(float a){return mat2(cos(a),sin(a),-sin(a),cos(a));}
-float radius(float a){vec4 s=u_circuit<.5?vec4(4.65,.62,.34,.22):u_circuit<1.5?vec4(5.35,.94,.22,.12):vec4(5.85,.32,.58,.08);return s.x+s.y*cos(3.*a+.3)+s.z*sin(5.*a-.6)+s.w*cos(7.*a+1.2);}
+float radius(float a){vec4 s=u_circuit<.5?vec4(4.65,.62,.34,.22):u_circuit<1.5?vec4(5.35,.94,.22,.12):(u_circuit<2.5?vec4(5.85,.32,.58,.08):vec4(5.15,.67,.29,.14));return s.x+s.y*cos(3.*a+.3)+s.z*sin(5.*a-.6)+s.w*cos(7.*a+1.2);}
 // Filter periodic markings toward their mean when the pattern is subpixel.
 float marking(float phase,float threshold,float pixelAngle,float frequency){
   float width=clamp(pixelAngle*frequency,.04,1.);
   return mix(smoothstep(threshold-width,threshold+width,cos(phase)),
              acos(threshold)/PI,smoothstep(.6,1.,width));
+}
+// SAKURA TOUGE: hanami grove and red lacquer shrine, hand-authored GPU scene.
+vec3 sakuraGarden(vec2 p,float d,vec3 col){
+    float roadside=smoothstep(.53,.90,abs(d));
+    if(roadside<=.001)return col;
+    // Stone walkway, lotus pond and vermilion torii landmark in the central garden.
+    vec2 temple=p-vec2(-.58,.35);
+    float stone=1.-smoothstep(.55,.72,abs(temple.y+.08));
+    stone*=1.-smoothstep(1.16,1.46,abs(temple.x));
+    float slabs=step(.51,fract(temple.x*5.+.05));
+    col=mix(col,mix(vec3(.30,.27,.32),vec3(.41,.39,.40),slabs),stone*roadside*.72);
+    vec2 q=temple-vec2(.0,.10);
+    float shrine=1.-smoothstep(.015,.046,sdBox(q,vec2(.39,.27)));
+    col=mix(col,vec3(.48,.13,.18),shrine*roadside);
+    float eave=1.-smoothstep(.013,.035,sdBox(q+vec2(.0,.30),vec2(.48,.055)));
+    float eave2=1.-smoothstep(.013,.035,sdBox(q-vec2(.0,.30),vec2(.46,.050)));
+    col=mix(col,vec3(.91,.37,.31),(eave+eave2)*roadside*.88);
+    float ridge=(1.-smoothstep(.007,.025,abs(q.x)))*(1.-smoothstep(.2,.3,abs(q.y)));
+    col=mix(col,vec3(.94,.72,.45),ridge*roadside*.7);
+    // Lanterns and straight stone steps by the shrine.
+    for(int i=0;i<4;++i){
+       vec2 lp=temple-vec2(-.87+float(i)*.57,-.67);
+       float halo=1.-smoothstep(.055,.19,length(lp));
+       float core=1.-smoothstep(.012,.041,length(lp));
+       col+=vec3(.4,.21,.11)*halo*roadside*.25;
+       col=mix(col,vec3(1.,.60,.35),core*roadside);
+    }
+    // Blossoms: overlapping lobes, warm shadows, micro-highlights, deterministic placement.
+    if(u_quality<.5)return col;
+    vec2 cell=floor(p*1.62);
+    for(int ix=-1;ix<=1;++ix)for(int iy=-1;iy<=1;++iy){
+        vec2 id=cell+vec2(float(ix),float(iy));
+        float seed=hash21(id+7.2);
+        if(seed<.17)continue;
+        vec2 c=(id+vec2(hash21(id+11.2),hash21(id+27.8))*.89)/1.62;
+        vec2 delta=p-c;
+        float rr=.18+.12*hash21(id+4.5);
+        float l=length(delta);
+        if(l>rr+.06)continue;
+        float shade=1.-smoothstep(rr*.72,rr*1.23,length(delta+vec2(.065,-.065)));
+        col*=1.-shade*.17*roadside;
+        vec2 uv=.5+delta/(rr*2.);
+        vec4 blossoms=texture(u_sakuraSprite,uv);
+        float tree=blossoms.a*roadside;
+        vec3 ink=mix(vec3(.86,.78,.91),vec3(1.03,.93,.97),seed);
+        col=mix(col,blossoms.rgb*ink,tree*.98);
+    }
+    // Roadside vermilion torii gates and warm lanterns mark the touge curves.
+    for(int gateId=0;gateId<4;++gateId){
+       float a=.52+float(gateId)*1.56;
+       float r=radius(a)+.86;
+       vec2 center=r*vec2(cos(a),sin(a));
+       vec2 q=rot(-a)*(p-center)*2.0;
+       if(length(q)>.75)continue;
+       float beam=1.-smoothstep(.025,.053,sdBox(q-vec2(.0,.10),vec2(.38,.050)));
+       float beam2=1.-smoothstep(.018,.035,sdBox(q-vec2(.0,.19),vec2(.46,.033)));
+       float pillar1=1.-smoothstep(.012,.032,sdBox(q-vec2(-.29,-.08),vec2(.040,.23)));
+       float pillar2=1.-smoothstep(.012,.032,sdBox(q-vec2(.29,-.08),vec2(.040,.23)));
+       float wood=max(max(beam,beam2),max(pillar1,pillar2));
+       float shadow=1.-smoothstep(.20,.55,length(q+vec2(.055,-.055)));
+       col*=1.-shadow*.22*roadside;
+       col=mix(col,vec3(.78,.17,.21),wood*roadside);
+       float gilt=(1.-smoothstep(.008,.020,abs(q.y-.18)))*(1.-smoothstep(.20,.23,abs(q.x)));
+       col=mix(col,vec3(.99,.74,.40),gilt*roadside*.75);
+       // Lantern halos beside the gate.
+       for(int j=0;j<2;++j){
+          vec2 lantern=q-vec2(j==0?-.53:.53,-.08);
+          float halo=1.-smoothstep(.07,.20,length(lantern));
+          float flame=1.-smoothstep(.018,.045,length(lantern));
+          col+=vec3(.23,.095,.047)*halo*.52*roadside;
+          col=mix(col,vec3(1.,.68,.38),flame*roadside);
+       }
+    }
+    return col;
+}
+vec3 sakuraPetals(vec2 screen,vec3 col,float t){
+ if(u_quality<1.5)return col;
+ // Light, sparse screen-space petals drifting; no expensive particle buffers.
+ for(int layer=0;layer<2;++layer){
+    float L=float(layer);
+    vec2 flow=screen*vec2(14.+L*5.,8.+L*3.)+vec2(t*(.11+L*.05),-t*(.27+L*.09));
+    vec2 cell=floor(flow),f=fract(flow);
+    float seed=hash21(cell+L*39.);
+    vec2 center=vec2(hash21(cell+7.+L),hash21(cell+15.+L));
+    vec2 diff=(f-center)*vec2(1.0,1.4);
+    diff.x+=sin(t+seed*6.)*.075;
+    float petal=(1.-smoothstep(.035,.090,length(diff)))*step(.91,seed);
+    col=mix(col,vec3(.99,.78,.82),petal*.68);
+ }
+ return col;
 }
 vec3 baseCol(vec2 p,float d,float angle){
   float pixel=max(u_zoom/u_resolution.y,.0001);
@@ -70,7 +161,18 @@ vec3 baseCol(vec2 p,float d,float angle){
   float outer=abs(d);
   float terrain=noise(p*5.);
   vec3 ground;
-  if(u_circuit>1.5){
+  if(u_circuit>2.5){
+    float bamboo=noise(p*vec2(3.1,5.4)),scree=noise(p*12.);
+    ground=mix(vec3(.062,.112,.135),vec3(.16,.23,.21),terrain);
+    ground+=vec3(.05,.035,.028)*smoothstep(.70,.86,bamboo)*.8;
+    float stream=abs(p.x-(2.5+.51*sin(p.y*.94)+.25*sin(p.y*1.77)));
+    float water=1.-smoothstep(.23,.42,stream);
+    vec3 lake=mix(vec3(.11,.24,.30),vec3(.26,.39,.43),noise(p*4.+u_time*.04));
+    lake+=.06*sin(p.y*12.+u_time*.3)*vec3(.44,.42,.44);
+    ground=mix(ground,lake,water*.8);
+    float stone=smoothstep(.57,.86,scree)*smoothstep(.65,1.6,abs(d));
+    ground=mix(ground,vec3(.28,.26,.28),stone*.23);
+  }else if(u_circuit>1.5){
     float shore=d+(terrain-.5)*.13;
     ground=mix(vec3(.25,.20,.13),vec3(.43,.35,.22),terrain);
     if(shore>.80){
@@ -93,6 +195,7 @@ vec3 baseCol(vec2 p,float d,float angle){
     ground=mix(ground,vec3(.014,.051,.059),smoothstep(5.6,7.2,length(p))*.7);
   }
 
+  bool japan=u_circuit>2.5;
   float road=1.-smoothstep(.44-edgeAA,.44+edgeAA,outer);
   vec3 col=ground;
   vec2 tileUV=p*5.;
@@ -114,7 +217,8 @@ vec3 baseCol(vec2 p,float d,float angle){
     vec3 realColor=pow(max(photo.rgb,vec3(.001)),vec3(2.2));
     vec3 realNormal=textureGrad(u_asphaltNormal,tileUV,tileDX,tileDY).xyz*2.-1.;
     float lit=clamp(.82+.27*dot(realNormal,normalize(vec3(-.5,.6,.55))),.6,1.12);
-    asphalt=mix(asphalt,realColor*.82*lit+vec3(.018),.83);
+    asphalt=mix(asphalt,realColor*.82*lit+vec3(.018),japan?.51:.83);
+    if(japan) asphalt=mix(asphalt,vec3(.15,.14,.18),.31);
     // Rain and storm share the wet surface. Snow and fog use their own effects.
     bool storm=u_weather>2.5 && u_weather<3.5;
     if((u_weather>.5 && u_weather<1.5) || storm){
@@ -127,20 +231,21 @@ vec3 baseCol(vec2 p,float d,float angle){
     col=mix(ground,asphalt,road);
   }
   float stripe=1.-smoothstep(.013-edgeAA,.013+edgeAA,abs(outer-.336));
-  col=mix(col,vec3(.78,.82,.71),stripe*.64);
+  col=mix(col,japan?vec3(.94,.79,.74):vec3(.78,.82,.71),stripe*(japan?.72:.64));
   float curb=1.-smoothstep(.023-edgeAA,.023+edgeAA,abs(outer-.442));
   float red=marking(angle*144.,0.,pixelAngle,144.);
   float curbFace=mix(.74,1.,smoothstep(.423,.443,outer));
-  col=mix(col,mix(vec3(.91,.90,.82),vec3(.70,.080,.075),red)*curbFace,curb*.97);
+  col=mix(col,mix(japan?vec3(.99,.87,.82):vec3(.91,.90,.82),japan?vec3(.78,.28,.38):vec3(.70,.080,.075),red)*curbFace,curb*.97);
   float mid=1.-smoothstep(.011-edgeAA,.011+edgeAA,outer);
   float dash=marking(angle*82.,.16,pixelAngle,82.);
-  col=mix(col,vec3(.88,.76,.40),mid*dash*.67);
+  col=mix(col,japan?vec3(.98,.75,.49):vec3(.88,.76,.40),mid*dash*(japan?.79:.67));
   if(u_weather>1.5&&u_weather<2.5){
    float snow=noise(p*19.);float ss=smoothstep(.4,.67,snow)*.78;
    col=mix(col,vec3(.71,.81,.89),ss*(smoothstep(.31,.46,abs(d))));
    col=mix(col,vec3(.2,.25,.29),ss*.08);
   }
   col=forestDetails(p,col,d);
+  if(japan) col=sakuraGarden(p,d,col);
   // Faixa de partida / chegada no ponto leste.
   float grid=1.-smoothstep(.04,.07,abs(p.y));
   float start=(1.-smoothstep(.09,.11,abs(p.x-radius(0.))))*grid*(1.-smoothstep(.24,.34,abs(d)));
@@ -163,11 +268,11 @@ vec3 baseCol(vec2 p,float d,float angle){
   // Elementos da pista longa: muretas, linha de escape, barreiras e refletores laterais.
   float barrier=1.-smoothstep(.017,.035,abs(outer-.58));
   float barrierStripe=marking(angle*478.,.06,pixelAngle,478.);
-  col=mix(col,mix(vec3(.18,.27,.30),vec3(.80,.88,.86),barrierStripe),barrier*.78);
+  col=mix(col,mix(japan?vec3(.35,.32,.41):vec3(.18,.27,.30),japan?vec3(.93,.77,.73):vec3(.80,.88,.86),barrierStripe),barrier*.78);
   float gravel=smoothstep(.46,.50,outer)*(1.-smoothstep(.75,.85,outer));
   col=mix(col,vec3(.13,.14,.145)+terrain*.038,gravel*.63);
   float beacon=1.-smoothstep(.008,.020,length(vec2(outer-.592,mod(angle*40.+.5,1.)-.5)));
-  col+=vec3(.025,.72,.64)*beacon*step(1.5,u_quality)*.82;
+  col+=(japan?vec3(.91,.24,.42):vec3(.025,.72,.64))*beacon*step(1.5,u_quality)*.82;
   // Marcas de frenagem concentradas nas entradas das curvas.
   float braking=smoothstep(.38,.82,abs(sin(3.*angle+.3)))*smoothstep(.03,.14,abs(d));
   float skid=pow(max(0.,sin(angle*71.+d*14.)),30.);
@@ -176,7 +281,7 @@ vec3 baseCol(vec2 p,float d,float angle){
   if(u_racingAssist>.5 && outer<.42){
     float line=1.-smoothstep(.012,.030,abs(d+.09));
     float apex=smoothstep(.64,.88,abs(sin(3.*angle+.3)));
-    col=mix(col,mix(vec3(.02,.69,.57),vec3(.93,.56,.08),apex),line*.56);
+    col=mix(col,mix(japan?vec3(.92,.46,.59):vec3(.83,.50,.62),vec3(.93,.56,.08),apex),line*.51);
   }
   // Sombra direcional das muretas: reforco de profundidade visual.
   float castShadow=1.-smoothstep(.030,.10,abs(outer-.62));
@@ -243,7 +348,7 @@ vec3 replayGhost(vec2 p,vec3 under){
  if(any(lessThan(uv,vec2(0.)))||any(greaterThan(uv,vec2(1.))))return under;
  vec4 s=texture(u_kartSprite,uv);
  float pulse=.90+.10*sin(u_time*4.7);
- vec3 tint=mix(s.rgb,vec3(.12,.94,1.),.74);
+ vec3 tint=mix(s.rgb,vec3(.99,.70,.85),.74);
  return mix(under,tint,s.a*.36*pulse);
 }
 float rain(vec2 uv,float t,float snow){
@@ -266,8 +371,8 @@ void main(){
   float angle=atan(world.y,world.x);
   float d=length(world)-radius(angle);
   vec3 col=baseCol(world,d,angle);
-  if(u_rivalCount>.5)col=racingRival(world,col,u_rival0,u_rivalAngle0,mix(vec3(.93,.11,.10),vec3(.06,.34,.93),u_accessible));
-  if(u_rivalCount>1.5)col=racingRival(world,col,u_rival1,u_rivalAngle1,vec3(.99,.68,.07));
+  if(u_rivalCount>.5)col=racingRival(world,col,u_rival0,u_rivalAngle0,mix(vec3(.30,.44,.76),vec3(.12,.68,.53),u_accessible));
+  if(u_rivalCount>1.5)col=racingRival(world,col,u_rival1,u_rivalAngle1,vec3(.98,.70,.37));
   col=replayGhost(world,col);
   // Spray de pneu limitado a regiao atras do kart (chuva e tempestade).
   if(u_quality>1.5 && u_speed>10. &&
@@ -284,9 +389,10 @@ void main(){
   }
   col=tyreSpray(world,col);
   col=kart(world,col,d);
+  if(u_circuit>2.5) col=sakuraPetals(gl_FragCoord.xy/u_resolution.y,col,u_time);
   // Luz cinematografica variavel, vinheta, haze e reflexo de lente.
   float cloud=noise(world*.6+vec2(u_time*.014,-u_time*.009));
-  float shadow=.82+.22*cloud;
+  float shadow=.90+.15*cloud;
   col*=shadow;
   float dark=(u_weather>2.5 && u_weather<3.5)? .61:1.;
   if(u_weather>3.5) {col=mix(col,vec3(.24,.33,.39),.29+.17*(1.-smoothstep(0.,1.3,length(world-u_car))));}
@@ -298,7 +404,7 @@ void main(){
   if(u_weather>.5&&u_weather<3.5){float p=rain(scr,u_time,u_weather>1.5&&u_weather<2.5?1.:0.);col+=p*((u_weather>1.5&&u_weather<2.5)?vec3(.68,.8,.9):vec3(.27,.41,.52));}
   if(u_weather<.5){float sundir=max(0.,1.-length(norm-vec2(.6,.85))*.8);col+=pow(sundir,7.)*vec3(.055,.07,.035);}
   if(u_flash>0.){col=mix(col,vec3(.87,.36,.22),u_flash*.27);}
-  float vignette=1.-.6*pow(length(norm*vec2(1.16,1.)),2.4);
+  float vignette=1.-.42*pow(length(norm*vec2(1.16,1.)),2.4);
   col*=vignette;
   float grain=hash21(pix+fract(u_time*12.))-.5;
   col+=grain*.009;

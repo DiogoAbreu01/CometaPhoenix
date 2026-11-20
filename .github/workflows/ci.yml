@@ -20,10 +20,12 @@ jobs:
         run: ctest --test-dir build --output-on-failure
       - name: OpenGL smoke tests
         run: |
-          for circuit in 0 1 2; do
+          for circuit in 0 1 2 3; do
             LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./build/cometa_game --benchmark --frames 4 --autopilot --circuit "$circuit" --weather rain --quality 3
           done
           LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./build/cometa_game --benchmark --frames 4 --garage --quality 3
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./build/cometa_game --benchmark --frames 4 --menu --quality 3
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./build/cometa_game --benchmark --frames 4 --autopilot --circuit 3 --overview --quality 3
       - name: Install portable layout
         run: cmake --install build --prefix linux-portable
       - uses: actions/upload-artifact@v4

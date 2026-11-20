@@ -9,7 +9,7 @@
 #include "TireDynamics.hpp"
 
 namespace phoenix {
-enum class Circuit { Forest, Alpine, Coast };
+enum class Circuit { Forest, Alpine, Coast, Sakura };
 const char* circuitName(Circuit circuit) noexcept;
 double circuitRadius(Circuit circuit,double angle) noexcept;
 enum class Weather { Sunny, Rain, Snow, Storm, Fog };
