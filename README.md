@@ -1,4 +1,4 @@
-# Cometa Phoenix — 0.9.10 (candidato nativo)
+# Cometa Phoenix — 0.9.11 (candidato nativo)
 
 Projeto ECOP13A / LAB12–LAB14. Corrida 2D com três circuitos e cinco condições climáticas, oficina 3D com diagnóstico, regeneração e abandono. Aplicativo e motor C++17 com SDL2/OpenGL 3.3 e shaders GLSL. Não depende de navegador nem JavaScript. Modelo físico didático, não certificado.
 
@@ -44,3 +44,7 @@ O motor usa síntese procedural original em C++17 (não é uma amostra Ferrari).
 - [Corrida com chuva — kart MK-III](docs/screenshots/0910-race.jpg)
 
 Audio: engine wavetable original com seis marchas virtuais e SFX procedurais distintos para impactos, reparos e conclusão de corrida; não usa samples de terceiros. Para verificar saída SDL, execute `cometa_game.exe` sem `--benchmark` e observe `AUDIO_DEVICE OPEN`; o dispositivo deve estar ativo, e o teste automatizado não substitui escuta real.
+
+## Fantasma da melhor volta (0.9.11)
+
+Uma volta válida grava a trajetória C++17 na memória (máximo de 4096 amostras); nas voltas seguintes, o fantasma ciano reproduz o recorde com interpolação. A tecla G alterna sua visibilidade. Trocar de circuito ou reiniciar apaga a gravação. Não existe salvamento entre partidas. O fantasma não colide com o kart. [Captura real na RX 580](docs/screenshots/0911-ghost-fullhd.jpg).

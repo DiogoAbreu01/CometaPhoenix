@@ -33,8 +33,55 @@ ImpactAssessment assessImpact(double speedKmh,double incidence,bool left,bool fr
 }
 Game::Game(std::uint32_t seed):seed_(seed){restart(seed);}
 void Game::setTargetLaps(int laps){targetLaps_=std::clamp(laps,0,99);restart(seed_);}
-void Game::restart(std::uint32_t seed){seed_=seed;sim_=std::make_unique<cometa::Simulacao>("normal", seed);vehicle_={}; vehicle_.x=circuitRadius(circuit_,0);vehicle_.y=0;vehicle_.angle=PI/2;lastPolarAngle_=0;orbitTurns_=0;worldTime_=0;cinematic_=0;lastImpact_=-100;currentLapTime_=lastLapTime_=bestLapTime_=0.;validLap_=true;validCompletedLaps_=0;}
+void Game::restart(std::uint32_t seed){
+    seed_=seed;sim_=std::make_unique<cometa::Simulacao>("normal", seed);vehicle_={};
+    vehicle_.x=circuitRadius(circuit_,0);vehicle_.y=0;vehicle_.angle=PI/2;
+    lastPolarAngle_=0;orbitTurns_=0;worldTime_=0;cinematic_=0;lastImpact_=-100;
+    currentLapTime_=lastLapTime_=bestLapTime_=0.;validLap_=true;validCompletedLaps_=0;
+    ghostLap_.reserve(maxGhostSamples_);
+    bestGhostLap_.reserve(maxGhostSamples_);
+    bestGhostLap_.clear();
+    startGhostLap();
+}
 bool Game::garage() const noexcept {auto f=sim_->fase();return f==cometa::Fase::Diagnostico || f==cometa::Fase::Reparando || f==cometa::Fase::Validacao || f==cometa::Fase::Abandono;}
+bool Game::hasGhost() const noexcept { return !bestGhostLap_.empty(); }
+
+GhostPose Game::ghostPose() const noexcept {
+    if (!hasGhost()) return {};
+    const auto next = std::lower_bound(bestGhostLap_.begin(), bestGhostLap_.end(), currentLapTime_,
+        [](const GhostSample& sample, double time) { return sample.time < time; });
+    if (next == bestGhostLap_.begin()) return next->pose;
+    if (next == bestGhostLap_.end()) return bestGhostLap_.back().pose;
+    const auto& previous = *(next - 1);
+    const double fraction = (currentLapTime_ - previous.time) / (next->time - previous.time);
+    return {
+        previous.pose.x + fraction * (next->pose.x - previous.pose.x),
+        previous.pose.y + fraction * (next->pose.y - previous.pose.y),
+        normAngle(previous.pose.angle + fraction * normAngle(next->pose.angle - previous.pose.angle))
+    };
+}
+
+void Game::startGhostLap() {
+    ghostLap_.clear();
+    ghostSampleInterval_ = 0.;
+    recordGhostSample(true);
+}
+
+void Game::recordGhostSample(bool finish) {
+    if (!ghostLap_.empty()) {
+        const double elapsed = currentLapTime_ - ghostLap_.back().time;
+        if (elapsed <= 0. || (!finish && elapsed < ghostSampleInterval_)) return;
+    }
+    if (ghostLap_.size() == maxGhostSamples_) {
+        // Keep the start and thin the history so the full lap still fits.
+        for (std::size_t i = 1; i < maxGhostSamples_ / 2; ++i)
+            ghostLap_[i] = ghostLap_[2 * i];
+        ghostLap_.resize(maxGhostSamples_ / 2);
+        ghostSampleInterval_ = std::max(ghostSampleInterval_ * 2.,
+            currentLapTime_ / static_cast<double>(ghostLap_.size()));
+    }
+    ghostLap_.push_back({{vehicle_.x, vehicle_.y, normAngle(vehicle_.angle)}, currentLapTime_});
+}
 double Game::repairFraction() const noexcept {const auto& r=sim_->reparo();return r.tempoTotalS>0?clamp(r.tempoDecorridoS/r.tempoTotalS,0,1):0;}
 double Game::trackOffset() const noexcept {double a=std::atan2(vehicle_.y,vehicle_.x);return std::hypot(vehicle_.x,vehicle_.y)-circuitRadius(circuit_,a);}
 double Game::lapProgress() const noexcept {return (std::atan2(vehicle_.y,vehicle_.x)+2*PI)/(2*PI)-std::floor((std::atan2(vehicle_.y,vehicle_.x)+2*PI)/(2*PI));}
@@ -86,13 +133,18 @@ void Game::update(const Input& in, double dt){
         double delta=normAngle(a-lastPolarAngle_);
         orbitTurns_+=delta;lastPolarAngle_=a;
         currentLapTime_+=dt;
-        if(std::abs(trackOffset())>.42)validLap_=false;
+        if(offroad || std::abs(trackOffset())>.42)validLap_=false;
         const int completed=std::max(vehicle_.lap,(int)std::floor(orbitTurns_/(2*PI)));
+        if(validLap_)recordGhostSample(completed>vehicle_.lap);
         if(completed>vehicle_.lap){
             lastLapTime_=validLap_?currentLapTime_:0.;
             if(lastLapTime_>0.)++validCompletedLaps_;
-            if(lastLapTime_>0. && (bestLapTime_==0. || lastLapTime_<bestLapTime_))bestLapTime_=lastLapTime_;
+            if(lastLapTime_>0. && (bestLapTime_==0. || lastLapTime_<bestLapTime_)){
+                bestLapTime_=lastLapTime_;
+                bestGhostLap_.swap(ghostLap_);
+            }
             vehicle_.lap=completed;currentLapTime_=0.;validLap_=true;
+            startGhostLap();
             if(finished()){vehicle_.speed=0.;vehicle_.lateral=0.;return;}
         }
         // A rigidez da pista gera impactos controlados ao atravessar a defensa.
@@ -148,6 +200,7 @@ void Game::update(const Input& in, double dt){
     if(before!=cometa::Fase::Corrida && sim_->fase()==cometa::Fase::Corrida){
        // apos conclusao do box, reposiciona na entrada da pista evitando salto de colisao
        double a=0.;vehicle_.x=circuitRadius(circuit_,a);vehicle_.y=0.;vehicle_.angle=PI/2;vehicle_.speed=0;lastPolarAngle_=a;orbitTurns_=vehicle_.lap*2*PI;lastImpact_=worldTime_;currentLapTime_=0.;validLap_=true;
+       startGhostLap();
     }
 }
 std::string Game::status() const {if(finished())return "CORRIDA CONCLUIDA";switch(sim_->fase()) {case cometa::Fase::Corrida:return "PILOTANDO";case cometa::Fase::Alerta:return "IMPACTO DETECTADO";case cometa::Fase::RetornoBox:return "REBOQUE AO BOX";case cometa::Fase::Diagnostico:return "ESCANEANDO ESTRUTURA";case cometa::Fase::Reparando:return "REGENERACAO EM CURSO";case cometa::Fase::Validacao:return "VALIDANDO SEGURANCA";case cometa::Fase::Abandono:return "DANO IRREVERSIVEL";}return "?";}

@@ -51,3 +51,9 @@ cp build/kart_sprite.rgba game/assets/kart_sprite.rgba
 - 10/10 CTest Release aprovados após o ajuste. Execução de 180 quadros com áudio habilitado passou.
 - RX 580 2048SP, Full HD Ultra, 360 quadros por cenário (330 medidos após 30 de aquecimento), sem VSync/áudio: Floresta 430,55 FPS (p95 2,552 ms); Alpes 419,42 FPS (p95 2,617 ms); Litoral 522,83 FPS (p95 2,160 ms); oficina 722,07 FPS (p95 1,622 ms). Ensaios curtos e não garantem estabilidade prolongada.
 - Capturas reais: `docs/screenshots/0910-garage.jpg` e `0910-race.jpg`. Testes Linux e homologação final permanecem pendentes.
+
+## 0.9.11 — fantasma da melhor volta
+- Codex via BlueLab (tarefa 10), C++17: gravação da melhor volta válida em buffers limitados a 4096 poses, interpolação de posição e rotação, sem alocação por quadro na reprodução; corridas com dano ou saída de pista não geram fantasma. Circuito/reinício apagam o registro.
+- Shader de corrida mostra o MK-III translúcido azul-ciano na trajetória gravada, tecla G alterna a exibição, HUD informa quando existe recorde. Não gera colisões. Fantasma armazenado apenas em memória nesta revisão.
+- Windows Release, RX 580 2048SP, Full HD Ultra chuva, corrida com piloto automático: 3300 quadros (3270 medidos), uma volta concluída e fantasma presente após o primeiro recorde, zero dano; 430,291 FPS médios medidos, P95 2,514 ms, P99 2,581 ms. Sem VSync e som, 7,8 segundos reais; não é teste térmico prolongado. CTest 10/10.
+- Captura real: docs/screenshots/0911-ghost-fullhd.jpg. Linux CI da revisão, validação de controles manuais e homologação final pendentes. TITAN 35B não foi executado nesta etapa por instabilidade anterior em consultas; BlueLab/Codex efetivamente utilizados. IC intocada.

@@ -13,6 +13,48 @@ int main(){using namespace phoenix;
  Game sunny(42), snow(42);sunny.setWeather(Weather::Sunny);snow.setWeather(Weather::Snow);
  for(int i=0;i<100;i++){sunny.update({true,false,true,false},.02);snow.update({true,false,true,false},.02);}
  CHECK(std::fabs(sunny.vehicle().angle-snow.vehicle().angle)>.02);
+ Game ghost;
+ const auto emptyGhost=ghost.ghostPose();
+ CHECK(!ghost.hasGhost());CHECK(emptyGhost.x==0. && emptyGhost.y==0. && emptyGhost.angle==0.);
+ ghost.setAutopilot(true);
+ Vehicle beforeWrap{}, afterWrap{};
+ double wrapTime=0.;
+ for(int i=0;i<15000 && ghost.vehicle().lap==0;++i){
+     CHECK(!ghost.hasGhost());
+     const Vehicle previous=ghost.vehicle();
+     const double previousTime=ghost.currentLapTime();
+     ghost.update({},.02);
+     if(previous.angle<3.141592653589793 && ghost.vehicle().angle>3.141592653589793 && wrapTime==0.){
+         beforeWrap=previous;
+         afterWrap=ghost.vehicle();
+         wrapTime=previousTime+.01;
+     }
+ }
+ CHECK(ghost.vehicle().lap==1);CHECK(ghost.hasGhost());CHECK(wrapTime>0.);
+ for(int i=0;i<1000 && ghost.currentLapTime()+.2<wrapTime;++i) ghost.update({},.2);
+ ghost.update({},wrapTime-ghost.currentLapTime());
+ const auto pose=ghost.ghostPose();
+ CHECK(std::isfinite(pose.x) && std::isfinite(pose.y) && std::isfinite(pose.angle));
+ CHECK(std::abs(std::hypot(pose.x,pose.y)-circuitRadius(ghost.circuit(),std::atan2(pose.y,pose.x)))<.42);
+ CHECK(std::abs(pose.x-(beforeWrap.x+afterWrap.x)*.5)<1e-9);
+ CHECK(std::abs(pose.y-(beforeWrap.y+afterWrap.y)*.5)<1e-9);
+ const double expectedAngle=(beforeWrap.angle+afterWrap.angle)*.5;
+ CHECK(std::abs(std::atan2(std::sin(pose.angle-expectedAngle),std::cos(pose.angle-expectedAngle)))<1e-9);
+ ghost.setCircuit(Circuit::Coast);CHECK(!ghost.hasGhost());
+ Game denseGhost;
+ denseGhost.setAutopilot(true);
+ for(int i=0;i<50000 && denseGhost.vehicle().lap==0;++i) denseGhost.update({},.002);
+ CHECK(denseGhost.hasGhost());CHECK(denseGhost.bestLapTime()>.002*4096);
+ const double denseBest=denseGhost.bestLapTime();
+ const Vehicle fasterLapStart=denseGhost.vehicle();
+ CHECK(denseGhost.ghostPose().x==circuitRadius(denseGhost.circuit(),0.));
+ for(int i=0;i<15000 && denseGhost.vehicle().lap==1;++i) denseGhost.update({},.02);
+ CHECK(denseGhost.vehicle().lap==2);CHECK(denseGhost.hasGhost());
+ CHECK(denseGhost.bestLapTime()<denseBest);
+ CHECK(denseGhost.bestLapTime()==denseGhost.lastLapTime());
+ CHECK(denseGhost.ghostPose().x==fasterLapStart.x);
+ CHECK(denseGhost.ghostPose().y==fasterLapStart.y);
+ denseGhost.restart();CHECK(!denseGhost.hasGhost());
  for(auto weather:{Weather::Sunny,Weather::Rain,Weather::Snow}) {
      Game lapTest(42);lapTest.setAutopilot(true);lapTest.setWeather(weather);
      double maxOffset=0.;int steps=0;
@@ -65,6 +107,7 @@ int main(){using namespace phoenix;
  const double pitX=4.65+.62*std::cos(.3)+.34*std::sin(-.6)+.22*std::cos(1.2)+.76;
  CHECK(far.garage());CHECK(std::hypot(far.vehicle().x-pitX,far.vehicle().y-.12)<1e-7);
  CHECK(far.vehicle().speed==0.);CHECK(far.vehicle().lap==0);CHECK(far.bestLapTime()==0.);
+ CHECK(!far.hasGhost());
  std::cout<<"PIT_ARRIVAL elapsed="<<(220+towSteps)*.02<<" m_error="<<std::hypot(far.vehicle().x-pitX,far.vehicle().y-.12)*15<<"\n";
  Game damaged;damaged.requestDamage("carenagem",10);CHECK(damaged.hasDamage());
  for(int i=0;i<800;i++)damaged.update({},.02);
@@ -73,6 +116,7 @@ int main(){using namespace phoenix;
  Game fracture;fracture.requestDamage("chassi",18);for(int i=0;i<900;i++)fracture.update({},.02);CHECK(fracture.abandoned());CHECK(fracture.simulator().componente("chassi").integridade<.55);
  Game repair;repair.requestDamage("carenagem",12);bool sawGarage=false;for(int i=0;i<1600;i++){repair.update({},.02);sawGarage|=repair.garage();}CHECK(sawGarage);CHECK(!repair.abandoned());CHECK(repair.simulator().fase()==cometa::Fase::Corrida);CHECK(repair.simulator().recursos().agenteMl<35);CHECK(std::abs(repair.trackOffset())<.01);CHECK(repair.vehicle().lap==0);CHECK(repair.bestLapTime()==0.);
  CHECK(repair.simulator().componenteMaisCritico().id==repair.simulator().rankingRisco().front().id);
+ CHECK(!repair.hasGhost());CHECK(repair.validCompletedLaps()==0);
  bool threw=false;try{damaged.update({},-1);}catch(const std::invalid_argument&){threw=true;}CHECK(threw);
  std::cout<<"PASSOU: clima dinamico, controle, colisao, regeneraçao, reproducibilidade.\n";
 }

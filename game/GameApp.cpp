@@ -191,7 +191,7 @@ void setf(GLApi& gl,GLuint p,const char*k,float f){int u=uniform(gl,p,k);if(u>=0
 void set2(GLApi& gl,GLuint p,const char*k,float x,float y){int u=uniform(gl,p,k);if(u>=0)gl.Uniform2f(u,x,y);}
 #include "NativeExtras.hpp"
 float partId(const std::string& s){if(s=="chassi")return 1;if(s=="carenagem")return 2;if(s=="suspensao")return 3;if(s=="pneu_de")return 11;if(s=="pneu_dd")return 12;if(s=="pneu_te")return 13;if(s=="pneu_td")return 14;if(s.find("pneu_")==0)return 4;if(s=="motor")return 5;if(s=="freio")return 6;return 3;}
-void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paused,double fps){
+void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paused,double fps,bool ghostVisible){
  auto &sim=game.simulator();auto &veh=game.vehicle();bool shop=game.garage();float S=std::max(.30f,std::min({1.7f,(float)w/1280.f,(float)h/720.f}));
  ui.rect(0,0,(float)w,82*S,{.018f,.037f,.053f,.91f});ui.rect(0,79*S,(float)w,2*S,CYAN);
  ui.text("COMETA",30*S,19*S,4*S,WHITE);ui.text("PHOENIX",205*S,19*S,4*S,CYAN);
@@ -209,6 +209,7 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
   ui.text("VOLTA "+intStr(game.finished()?game.validCompletedLaps():game.validCompletedLaps()+1)+(game.targetLaps()>0?"/"+intStr(game.targetLaps()):" LIVRE"),(float)w-245*S,201*S,2.2f*S,WHITE);
   ui.text("TEMPO "+fmt(game.currentLapTime(),2)+" S",(float)w-245*S,229*S,1.7f*S,game.validLap()?WHITE:BAD);
   ui.text("MELHOR "+(game.bestLapTime()>0.?fmt(game.bestLapTime(),2)+" S":std::string("--")),(float)w-245*S,259*S,1.7f*S,CYAN);
+  if(game.hasGhost())ui.text(ghostVisible?"FANTASMA ON":"FANTASMA OFF",(float)w-245*S,282*S,1.45f*S,ghostVisible?CYAN:MUTED);
   // Conta-giros circular estilo HUD de corridas; um unico VBO por frame.
   float cx=(float)w-132*S,cy=(float)h-187*S;
   ui.ring(cx,cy,66*S,4*S,2.45f,4.58f,{.14f,.25f,.28f,.85f});
@@ -247,7 +248,7 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
  ui.rect(0,(float)h-73*S,(float)w,73*S,{.014f,.036f,.05f,.93f});
  ui.rect(0,(float)h-73*S,(float)w,2*S,CYAN);
  ui.text("STATUS: "+game.status(),28*S,(float)h-55*S,1.95f*S,sim.fase()==cometa::Fase::Abandono?BAD:CYAN);
- ui.text(shop?"A/D OU SETAS: GIRAR CAMERA  |  P PAUSA  |  Q GFX  |  R REINICIA":"WASD/SETAS DIRIGIR  |  1-5 CLIMA  |  X DANO  |  R REINICIA  |  P PAUSA  |  Q GFX  |  M MAPA  |  V SOM",28*S,(float)h-25*S,1.55f*S,MUTED);
+ ui.text(shop?"A/D OU SETAS: GIRAR CAMERA  |  P PAUSA  |  Q GFX  |  R REINICIA":"WASD/SETAS DIRIGIR  |  1-5 CLIMA  |  X DANO  |  R REINICIA  |  P PAUSA  |  Q GFX  |  M MAPA  |  G FANTASMA  |  V SOM",28*S,(float)h-25*S,1.55f*S,MUTED);
  ui.text("FPS "+fmt(fps,0),std::max(0.f,(float)w-255*S),(float)h-52*S,1.7f*S,CYAN);
  ui.text("GFX "+intStr(quality),std::max(0.f,(float)w-116*S),(float)h-52*S,1.8f*S,WARN);
  if(game.finished()){ui.rect(0,(float)h*.39f,(float)w,126*S,{.008f,.05f,.046f,.94f});ui.text("CORRIDA CONCLUIDA",(float)w*.22f,(float)h*.41f,4.4f*S,CYAN);ui.text("TOTAL "+fmt(game.worldTime(),2)+" S  |  R REINICIAR",(float)w*.23f,(float)h*.49f,2.1f*S,WHITE);}
@@ -336,7 +337,7 @@ int main(int argc,char**argv){
   std::size_t knownDamageEvents=game.simulator().danos().tamanho();
   auto knownPhase=game.simulator().fase();
   bool knownFinished=game.finished();
-  bool running=true,paused=false,menuOpen=forceMenu||(maxFrames==0&&!forceGarage),fullscreen=false,mapOpen=false,muted=false;
+  bool running=true,paused=false,menuOpen=forceMenu||(maxFrames==0&&!forceGarage),fullscreen=false,mapOpen=false,muted=false,ghostVisible=true;
   int quality=initialQuality,frame=0; UI ui;ui.verts.reserve(30000);ui.letterVerts.reserve(14000);int measuredRace=0,measuredGarage=0,measuredMenu=0;std::vector<double> frameMs;frameMs.reserve(maxFrames>0?maxFrames:0);double fps=60.,fpsWindow=0.;int fpsFrames=0;
   float orbit=0,smx=(float)game.vehicle().x,smy=(float)game.vehicle().y;
   std::uint32_t ticks=SDL_GetTicks();double accumulator=0;
@@ -356,6 +357,7 @@ int main(int argc,char**argv){
      if(k=='t' && menuOpen){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%3));smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
      if(!menuOpen){
        if(k=='m')mapOpen=!mapOpen;
+       if(k=='g')ghostVisible=!ghostVisible;
        if(k=='v')muted=!muted;
        if(k=='p')paused=!paused;
        if(k=='r'){game.restart();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
@@ -395,6 +397,8 @@ int main(int argc,char**argv){
      }else{
        const auto &ranking=game.simulator().componenteMaisCritico();set2(gl,p,"u_camera",mapOpen?0.f:smx,mapOpen?0.f:smy);set2(gl,p,"u_car",(float)game.vehicle().x,(float)game.vehicle().y);
        setf(gl,p,"u_heading",(float)game.vehicle().angle);setf(gl,p,"u_zoom",mapOpen?17.f:2.85f);
+       const auto gh=game.ghostPose();
+       setf(gl,p,"u_hasGhost",game.hasGhost()&&ghostVisible?1.f:0.f);set2(gl,p,"u_ghostPos",(float)gh.x,(float)gh.y);setf(gl,p,"u_ghostHeading",(float)gh.angle);
        gl.ActiveTexture(TEXTURE0);gl.BindTexture(TEXTURE_2D,spriteTexture);gl.Uniform1i(uniform(gl,p,"u_kartSprite"),0);
        gl.ActiveTexture(TEXTURE0+1);gl.BindTexture(TEXTURE_2D,asphaltPhoto);gl.Uniform1i(uniform(gl,p,"u_asphaltPhoto"),1);
        gl.ActiveTexture(TEXTURE0+2);gl.BindTexture(TEXTURE_2D,asphaltNormal);gl.Uniform1i(uniform(gl,p,"u_asphaltNormal"),2);
@@ -420,7 +424,7 @@ int main(int argc,char**argv){
       gl.DrawArrays(TRIANGLES,0,3);
    }
    ui.verts.clear();ui.letterVerts.clear();
-   if(menuOpen)drawMenu(ui,w,h,quality,game.circuit(),game.targetLaps()); else drawHUD(ui,game,w,h,quality,paused,fps);
+   if(menuOpen)drawMenu(ui,w,h,quality,game.circuit(),game.targetLaps()); else drawHUD(ui,game,w,h,quality,paused,fps,ghostVisible);
    gl.Enable(BLEND);gl.BlendFunc(SRC_ALPHA,ONE_MINUS_SRC_ALPHA);
    gl.UseProgram(uiProg);set2(gl,uiProg,"res",(float)w,(float)h);
    gl.BindVertexArray(uiVAO);gl.BindBuffer(ARRAY,uiVBO);

@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -15,6 +16,7 @@ struct ImpactAssessment { const char* component; const char* kind; double deltaV
 ImpactAssessment assessImpact(double speedKmh,double incidence,bool left,bool front) noexcept;
 struct Input { bool throttle{}, brake{}, left{}, right{}, reset{}; };
 struct Vehicle { double x{1.92}, y{0}, angle{1.5707963267948966}, speed{}, lateral{}; int lap{}; };
+struct GhostPose {double x{},y{},angle{};};
 struct Climate { double grip{}, visibility{}, precipitation{}, temperature{}, wind{}, drag{}; };
 Climate climate(Weather w) noexcept;
 struct Particle { float x{},y{},life{},size{}; };
@@ -42,6 +44,8 @@ public:
     double currentLapTime() const noexcept { return currentLapTime_; }
     double lastLapTime() const noexcept { return lastLapTime_; }
     double bestLapTime() const noexcept { return bestLapTime_; }
+    bool hasGhost() const noexcept;
+    GhostPose ghostPose() const noexcept;
     bool validLap() const noexcept { return validLap_; }
     int validCompletedLaps() const noexcept { return validCompletedLaps_; }
     int targetLaps() const noexcept { return targetLaps_; }
@@ -51,6 +55,12 @@ public:
     bool autopilot() const noexcept { return autopilot_; }
     std::string status() const;
 private:
+    struct GhostSample { GhostPose pose; double time; };
+    static constexpr std::size_t maxGhostSamples_ = 4096;
+    void startGhostLap();
+    void recordGhostSample(bool finish);
+    std::vector<GhostSample> ghostLap_, bestGhostLap_;
+    double ghostSampleInterval_{};
     std::unique_ptr<cometa::Simulacao> sim_;
     Vehicle vehicle_{};
     Weather weather_{Weather::Sunny};

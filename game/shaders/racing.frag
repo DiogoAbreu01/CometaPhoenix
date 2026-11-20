@@ -5,6 +5,9 @@ uniform float u_time;
 uniform vec2 u_camera;
 uniform vec2 u_car;
 uniform float u_heading;
+uniform vec2 u_ghostPos;
+uniform float u_ghostHeading;
+uniform float u_hasGhost;
 uniform float u_zoom;
 uniform float u_weather;
 uniform float u_speed;
@@ -192,6 +195,19 @@ vec3 kart(vec2 p,vec3 under,float d){
  return col;
 }
 
+// Best-lap replay ghost: translucent, non-colliding and sampled from the MK-III sprite.
+vec3 replayGhost(vec2 p,vec3 under){
+ if(u_hasGhost<.5)return under;
+ vec2 delta=p-u_ghostPos;
+ if(dot(delta,delta)>.20)return under;
+ vec2 q=rot(-u_ghostHeading)*delta;
+ vec2 uv=vec2(.5+q.x*1.8868,.5+q.y*1.8868);
+ if(any(lessThan(uv,vec2(0.)))||any(greaterThan(uv,vec2(1.))))return under;
+ vec4 s=texture(u_kartSprite,uv);
+ float pulse=.90+.10*sin(u_time*4.7);
+ vec3 tint=mix(s.rgb,vec3(.12,.94,1.),.74);
+ return mix(under,tint,s.a*.36*pulse);
+}
 float rain(vec2 uv,float t,float snow){
   float g=0.;
   for(int k=0;k<3;k++){
@@ -212,6 +228,7 @@ void main(){
   float angle=atan(world.y,world.x);
   float d=length(world)-radius(angle);
   vec3 col=baseCol(world,d,angle);
+  col=replayGhost(world,col);
   col=kart(world,col,d);
   // Luz cinematografica variavel, vinheta, haze e reflexo de lente.
   float cloud=noise(world*.6+vec2(u_time*.014,-u_time*.009));
