@@ -1,0 +1,16 @@
+BOX Q0
+BENCHMARK frames=180 seconds=5.05706 avg_fps=35.5938 ms_per_frame=28.0948 quality=0
+MEASURED frames=150 warmup=30 fps=38.1219 mean_ms=26.2317
+FRAME_MS p50=25.6056 p95=29.5836 p99=33.1879 max=67.4927
+BOX Q1
+BENCHMARK frames=180 seconds=5.19374 avg_fps=34.6571 ms_per_frame=28.8541 quality=1
+MEASURED frames=150 warmup=30 fps=35.3084 mean_ms=28.3219
+FRAME_MS p50=28.0485 p95=30.3194 p99=33.8747 max=38.0907
+BOX Q2
+BENCHMARK frames=180 seconds=4.24887 avg_fps=42.3642 ms_per_frame=23.6048 quality=2
+MEASURED frames=150 warmup=30 fps=44.3374 mean_ms=22.5543
+FRAME_MS p50=22.2882 p95=25.496 p99=28.4443 max=29.0239
+BOX Q3
+BENCHMARK frames=120 seconds=2.89366 avg_fps=41.47 ms_per_frame=24.1138 quality=3
+MEASURED frames=90 warmup=30 fps=42.6075 mean_ms=23.4701
+FRAME_MS p50=22.6887 p95=25.8925 p99=30.9618 max=56.747

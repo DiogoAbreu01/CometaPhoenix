@@ -1,0 +1,22 @@
+Internal ctest changing into directory: /tmp/phoenix-final
+Test project /tmp/phoenix-final
+    Start 1: cometa_gameplay_weather
+1/8 Test #1: cometa_gameplay_weather ..........   Passed    0.01 sec
+    Start 2: cometa_danos_regeneracao
+2/8 Test #2: cometa_danos_regeneracao .........   Passed    0.01 sec
+    Start 3: cometa_cenario_normal
+3/8 Test #3: cometa_cenario_normal ............   Passed    0.00 sec
+    Start 4: cometa_cenario_critico
+4/8 Test #4: cometa_cenario_critico ...........   Passed    0.00 sec
+    Start 5: cometa_cenario_sem_recurso
+5/8 Test #5: cometa_cenario_sem_recurso .......   Passed    0.00 sec
+    Start 6: cometa_assets_nativos
+6/8 Test #6: cometa_assets_nativos ............   Passed    0.03 sec
+    Start 7: referencia_lab10
+7/8 Test #7: referencia_lab10 .................   Passed    0.00 sec
+    Start 8: referencia_lab12_template
+8/8 Test #8: referencia_lab12_template ........   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 8
+
+Total Test time (real) =   0.06 sec

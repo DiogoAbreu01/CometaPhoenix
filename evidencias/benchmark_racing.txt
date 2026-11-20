@@ -1,0 +1,16 @@
+CORRIDA chuva Q0
+BENCHMARK frames=180 seconds=2.6445 avg_fps=68.0657 ms_per_frame=14.6917 quality=0
+MEASURED frames=150 warmup=30 fps=80.602 mean_ms=12.4066
+FRAME_MS p50=11.0622 p95=23.2372 p99=26.64 max=27.0687
+CORRIDA chuva Q1
+BENCHMARK frames=180 seconds=3.125 avg_fps=57.6 ms_per_frame=17.3611 quality=1
+MEASURED frames=150 warmup=30 fps=57.7832 mean_ms=17.3061
+FRAME_MS p50=14.8876 p95=29.6709 p99=31.9474 max=33.2998
+CORRIDA chuva Q2
+BENCHMARK frames=180 seconds=5.62543 avg_fps=31.9975 ms_per_frame=31.2524 quality=2
+MEASURED frames=150 warmup=30 fps=33.517 mean_ms=29.8356
+FRAME_MS p50=25.8474 p95=44.1621 p99=45.5866 max=50.5646
+CORRIDA chuva Q3
+BENCHMARK frames=180 seconds=5.20869 avg_fps=34.5576 ms_per_frame=28.9372 quality=3
+MEASURED frames=150 warmup=30 fps=34.3108 mean_ms=29.1454
+FRAME_MS p50=25.666 p95=43.5687 p99=45.2843 max=47.0083

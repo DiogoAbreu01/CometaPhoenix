@@ -1,0 +1,61 @@
+#version 330 core
+out vec4 FragColor;
+uniform vec2 u_resolution;
+uniform float u_time,u_orbit,u_damage,u_repair,u_phase,u_quality;
+float hash21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float grid(float v,float w){return 1.-smoothstep(0.,w,abs(fract(v)-.5));}
+void main(){
+ vec2 uv=(gl_FragCoord.xy-u_resolution*.5)/u_resolution.y;
+ float a=.45+u_orbit;
+ vec3 ro=vec3(3.4*cos(a),3.4*sin(a),2.3);
+ vec3 target=vec3(0.,0.,.46),fwd=normalize(target-ro);
+ vec3 right=normalize(cross(fwd,vec3(0,0,1))),up=normalize(cross(right,fwd));
+ vec3 rd=normalize(1.275*fwd+uv.x*right+uv.y*up);
+ // shadowy hi-tech hangar, soft indirect sky + illuminated industrial panels
+ vec3 col=mix(vec3(.018,.038,.052),vec3(.04,.072,.086),clamp(.5+rd.z*.50,0.,1.));
+ float wallGrid=max(grid(uv.x*13.+.18,.018),grid(uv.y*9.,.015));
+ col+=vec3(.014,.045,.059)*wallGrid*.6;
+ float skyline=1.-smoothstep(.09,.3,abs(uv.y-.28));
+ col+=vec3(.025,.10,.13)*skyline*.19;
+ // projected floor plane (Z=0) in same camera as real GLB model.
+ if(rd.z<-.001){
+  float t=-ro.z/rd.z;
+  vec3 p=ro+rd*t;
+  vec2 tile=fract(p.xy*2.15);
+  float seam=1.-smoothstep(.010,.025,min(min(tile.x,1.-tile.x),min(tile.y,1.-tile.y)));
+  float checker=mod(floor(p.x*2.15)+floor(p.y*2.15),2.);
+  vec3 floorcol=mix(vec3(.036,.062,.069),vec3(.045,.073,.082),checker);
+  float grain=hash21(floor(p.xy*120.))*.016;
+  floorcol+=grain; floorcol-=seam*.020;
+  float radius=length(p.xy);
+  float platform=1.-smoothstep(1.36,1.45,radius);
+  floorcol=mix(floorcol,vec3(.056,.105,.119),platform*.85);
+  float ring=1.-smoothstep(.015,.047,abs(radius-1.41));
+  floorcol+=vec3(.01,.56,.48)*ring;
+  float ring2=1.-smoothstep(.018,.038,abs(radius-1.64));
+  floorcol+=vec3(.01,.15,.18)*ring2*.35;
+  // Contact shadow under exposed wheels and chassis.
+  float shadow=1.-smoothstep(.45,1.40,length(p.xy*vec2(.9,1.05)));
+  floorcol*=1.-shadow*.58;
+  // Reflective shop floor, inexpensive non-RT wet reflection streaks.
+  float streak=pow(max(0.,sin(p.y*20.+sin(p.x*7.)*.6)),14.);
+  floorcol+=vec3(.045,.11,.13)*streak*(u_quality>1.5?.35:.15)*exp(-radius*.15);
+  float scanner=1.-smoothstep(.02,.09,abs(p.x-sin(u_time*.55)*.7));
+  floorcol+=vec3(.015,.20,.22)*scanner*.19*step(1.5,u_phase);
+  float haze=1.-exp(-t*.065);
+  col=mix(floorcol,col,haze);
+ }
+ // Soft lighting and sci-fi volumetric beams, deliberately no blocky fake car.
+ float key=pow(max(0.,1.-length(uv-vec2(.50,.38))),3.);
+ col+=vec3(.016,.12,.16)*key;
+ float neonEdge=pow(max(0.,1.-abs(uv.x*.85-uv.y*.28-.78)),8.);
+ col+=vec3(.01,.12,.14)*neonEdge;
+ float corners=length(uv*vec2(1.10,.85));col*=1.-.33*smoothstep(.23,.82,corners);
+ if(u_phase>1.5&&u_phase<3.5){
+  float pulse=.5+.5*sin(u_time*2.8);
+  float hologram=pow(max(0.,1.-abs(uv.y+.35+sin(u_time*.27)*.04)*50.),2.);
+  col+=vec3(.02,.20,.21)*hologram*(.18+.28*pulse);
+ }
+ col=col/(col+.40);col=pow(max(col,0.),vec3(.83));
+ FragColor=vec4(col,1.);
+}

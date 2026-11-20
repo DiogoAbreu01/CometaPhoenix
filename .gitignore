@@ -1,0 +1,33 @@
+# Build and executables
+build/
+build-*/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.so
+*.dll
+*.dylib
+# IDE and system
+.vscode/
+.idea/
+.DS_Store
+# Generated LAB10 outputs and simulation data
+referencias/lab10/boletim_cometa.txt
+sim_output/
+logs/
+*.log
+# No credentials
+.env
+.env.*
+*.pem
+*.key
+
+# Portable distribution and local measurements
+windows-portable/
+*.ppm
+

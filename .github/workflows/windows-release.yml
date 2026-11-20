@@ -1,0 +1,35 @@
+name: Windows x64 build
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SDL2 with vcpkg
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git C:/vcpkg-phoenix
+          & C:/vcpkg-phoenix/bootstrap-vcpkg.bat -disableMetrics
+          Push-Location C:/vcpkg-phoenix
+          & ./vcpkg.exe install sdl2:x64-windows
+          Pop-Location
+      - name: Configure MSVC (C++17)
+        shell: pwsh
+        run: cmake -S . -B build-windows -A x64 -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg-phoenix/scripts/buildsystems/vcpkg.cmake -DCOMETA_REFERENCIAS=OFF
+      - name: Compile native Windows executable and tests
+        run: cmake --build build-windows --config Release --parallel 4
+      - name: Run headless C++ tests
+        run: ctest --test-dir build-windows -C Release --output-on-failure
+      - name: Bundle executable, SDL2.dll, shaders and assets
+        run: cmake --install build-windows --config Release --prefix windows-portable
+      - name: Upload portable Windows game
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cometa-Phoenix-Windows-x64
+          path: windows-portable/
