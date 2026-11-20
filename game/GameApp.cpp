@@ -1,6 +1,7 @@
 // COMETA PHOENIX - Jogo nativo SDL2/OpenGL em C++17.
 // SDL2 e apenas a camada de janela/entrada; simulacao, UI e shaders sao proprios.
 #include "GamePhysics.hpp"
+#include "RivalAI.hpp"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -193,7 +194,7 @@ void setf(GLApi& gl,GLuint p,const char*k,float f){int u=uniform(gl,p,k);if(u>=0
 void set2(GLApi& gl,GLuint p,const char*k,float x,float y){int u=uniform(gl,p,k);if(u>=0)gl.Uniform2f(u,x,y);}
 #include "NativeExtras.hpp"
 float partId(const std::string& s){if(s=="chassi")return 1;if(s=="carenagem")return 2;if(s=="suspensao")return 3;if(s=="pneu_de")return 11;if(s=="pneu_dd")return 12;if(s=="pneu_te")return 13;if(s=="pneu_td")return 14;if(s.find("pneu_")==0)return 4;if(s=="motor")return 5;if(s=="freio")return 6;return 3;}
-void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paused,double fps,bool ghostVisible){
+void drawHUD(UI & ui,const phoenix::Game &game,const std::array<phoenix::RivalAI,2>& rivals,int rivalCount,int w,int h,int quality,bool paused,double fps,bool ghostVisible){
  auto &sim=game.simulator();auto &veh=game.vehicle();bool shop=game.garage();float S=std::max(.30f,std::min({1.7f,(float)w/1280.f,(float)h/720.f}));
  ui.rect(0,0,(float)w,82*S,{.018f,.037f,.053f,.91f});ui.rect(0,79*S,(float)w,2*S,CYAN);
  ui.text("COMETA",30*S,19*S,4*S,WHITE);ui.text("PHOENIX",205*S,19*S,4*S,CYAN);
@@ -205,6 +206,15 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
   ui.text("VELOCIDADE",44*S,164*S,2*S,MUTED);ui.text(fmt(veh.speed),44*S,187*S,5.4f*S,WHITE);ui.text("KM/H",165*S,207*S,2*S,CYAN);
   ui.text("ADERENCIA",44*S,260*S,1.9f*S,MUTED);
   ui.rect(153*S,259*S,117*S,8*S,{.12f,.22f,.24f,1});ui.rect(153*S,259*S,117*S*(float)phoenix::climate(game.weather()).grip,8*S,CYAN);
+  if(rivalCount>0){
+    int position=1;
+    const double playerProg=game.vehicle().lap+game.lapProgress();
+    for(int i=0;i<rivalCount;++i){
+      if(game.finished())position+=rivals[i].finished(game.targetLaps()) && rivals[i].raceTime()<game.worldTime();
+      else position+=rivals[i].totalProgress()/6.283185307179586>playerProg;
+    }
+    ui.text("POSICAO "+intStr(position)+"/"+intStr(rivalCount+1),44*S,284*S,1.6f*S,WARN);
+  }
   ui.rect((float)w-267*S,103*S,242*S,193*S,{.013f,.031f,.046f,.88f});
   ui.text("CONDICAO",(float)w-246*S,118*S,2.4f*S,MUTED);
   ui.text(phoenix::weatherName(game.weather()),(float)w-245*S,155*S,2.9f*S,CYAN);
@@ -228,6 +238,10 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
   }
   float ang=std::atan2((float)veh.y,(float)veh.x),ra=(float)phoenix::circuitRadius(game.circuit(),ang)*8*S;
   ui.rect(mx+ra*std::cos(ang)-4*S,my+ra*.7f*std::sin(ang)-4*S,8*S,8*S,CYAN);
+  for(int i=0;i<rivalCount;++i){
+     const auto other=rivals[i].pose();
+     ui.rect(mx+float(other.x)*8*S-3*S,my+float(other.y)*5.6f*S-3*S,6*S,6*S,i==0?BAD:WARN);
+  }
   ui.text("MAPA",mx-62*S,my-55*S,1.5f*S,MUTED);
   if(game.cinematic()>0){ui.rect(0,(float)h*.46f,(float)w,90*S,{.31f,.024f,.02f,.6f});ui.text("ALERTA DE COLISAO",(float)w*.24f,(float)h*.48f,4.5f*S,BAD);}
  }else{
@@ -256,7 +270,7 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
  if(game.finished()){ui.rect(0,(float)h*.39f,(float)w,126*S,{.008f,.05f,.046f,.94f});ui.text("CORRIDA CONCLUIDA",(float)w*.22f,(float)h*.41f,4.4f*S,CYAN);ui.text("TOTAL "+fmt(game.worldTime(),2)+" S  |  R REINICIAR",(float)w*.23f,(float)h*.49f,2.1f*S,WHITE);}
  else if(paused){ui.rect(0,(float)h*.46f,(float)w,70*S,{.005f,.012f,.021f,.82f});ui.text("PAUSADO",(float)w*.38f,(float)h*.48f,4.8f*S,WHITE);}
 }
-void drawMenu(UI &ui,int w,int h,int quality,phoenix::Circuit circuit,int laps){
+void drawMenu(UI &ui,int w,int h,int quality,phoenix::Circuit circuit,int laps,int rivals){
  const float S=std::max(.28f,std::min({1.4f,(float)w/1280.f,(float)h/720.f}));
  ui.rect(0,0,(float)w,15*S,{.012f,.08f,.09f,.82f});
  ui.rect(35*S,120*S,7*S,245*S,CYAN);
@@ -268,7 +282,7 @@ void drawMenu(UI &ui,int w,int h,int quality,phoenix::Circuit circuit,int laps){
  ui.rect(65*S,466*S,445*S,118*S,{.008f,.02f,.03f,.84f});
  ui.text(std::string("[ T ] CIRCUITO: ")+phoenix::circuitName(circuit),84*S,482*S,2*S,WHITE);
  ui.text("[ L ] VOLTAS: "+(laps?intStr(laps):std::string("LIVRE")),84*S,518*S,2*S,MUTED);
- ui.text("F11 TELA CHEIA   M MAPA   V SOM",84*S,554*S,2*S,MUTED);
+ ui.text("[ K ] RIVAIS: "+intStr(rivals)+"   F11 TELA CHEIA   M MAPA",84*S,554*S,1.8f*S,MUTED);
  ui.rect(0,(float)h-60*S,(float)w,60*S,{.009f,.023f,.034f,.89f});
  ui.text("COMETA PHOENIX / C++17 + OPENGL 3.3",34*S,(float)h-39*S,2*S,MUTED);
  ui.text("PERFIL "+intStr(quality),std::max(20.f,(float)w-175*S),(float)h-39*S,2*S,CYAN);
@@ -281,8 +295,8 @@ void screenshot(GLApi&gl,const std::string&name,int w,int h){
 } // namespace
 int main(int argc,char**argv){
  try{
-  std::string shot;int maxFrames=0;int initialWeather=0;bool autoPilot=false,forceGarage=false,forceMenu=false,benchmark=false;int initialCircuit=0,initialLaps=3;int initialQuality=2, initialWidth=1280, initialHeight=720;
-  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--screenshot"&&i+1<argc)shot=argv[++i];else if(a=="--frames"&&i+1<argc)maxFrames=std::stoi(argv[++i]);else if(a=="--autopilot")autoPilot=true;else if(a=="--garage")forceGarage=true;else if(a=="--menu")forceMenu=true;else if(a=="--benchmark")benchmark=true;else if(a=="--width"&&i+1<argc)initialWidth=std::clamp(std::stoi(argv[++i]),640,3840);else if(a=="--height"&&i+1<argc)initialHeight=std::clamp(std::stoi(argv[++i]),480,2160);else if(a=="--laps"&&i+1<argc)initialLaps=std::clamp(std::stoi(argv[++i]),0,99);else if(a=="--circuit"&&i+1<argc)initialCircuit=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--quality"&&i+1<argc)initialQuality=std::max(0,std::min(3,std::stoi(argv[++i])));else if(a=="--weather"&&i+1<argc){std::string v=argv[++i];initialWeather=v=="rain"?1:v=="snow"?2:v=="storm"?3:v=="fog"?4:0;}}
+  std::string shot;int maxFrames=0;int initialWeather=0;bool autoPilot=false,forceGarage=false,forceMenu=false,benchmark=false;int initialCircuit=0,initialLaps=3,initialRivals=2;int initialQuality=2, initialWidth=1280, initialHeight=720;
+  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--screenshot"&&i+1<argc)shot=argv[++i];else if(a=="--frames"&&i+1<argc)maxFrames=std::stoi(argv[++i]);else if(a=="--autopilot")autoPilot=true;else if(a=="--garage")forceGarage=true;else if(a=="--menu")forceMenu=true;else if(a=="--benchmark")benchmark=true;else if(a=="--width"&&i+1<argc)initialWidth=std::clamp(std::stoi(argv[++i]),640,3840);else if(a=="--height"&&i+1<argc)initialHeight=std::clamp(std::stoi(argv[++i]),480,2160);else if(a=="--laps"&&i+1<argc)initialLaps=std::clamp(std::stoi(argv[++i]),0,99);else if(a=="--circuit"&&i+1<argc)initialCircuit=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--rivals"&&i+1<argc)initialRivals=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--quality"&&i+1<argc)initialQuality=std::max(0,std::min(3,std::stoi(argv[++i])));else if(a=="--weather"&&i+1<argc){std::string v=argv[++i];initialWeather=v=="rain"?1:v=="snow"?2:v=="storm"?3:v=="fog"?4:0;}}
   if(benchmark&&maxFrames==0)maxFrames=300;
   if(SDL_Init(0x00000020 | 0x00004000)!=0)throw std::runtime_error(SDL_GetError());
   SDL_GL_SetAttribute(17,3);SDL_GL_SetAttribute(18,3);SDL_GL_SetAttribute(21,1);SDL_GL_SetAttribute(5,1);SDL_GL_SetAttribute(6,24);
@@ -346,6 +360,12 @@ int main(int argc,char**argv){
     recordedBest=game.bestLapTime();
   };
   reloadRecord();
+  std::array<phoenix::RivalAI,2> rivals{};
+  int rivalCount=initialRivals;
+  auto resetRivals=[&](){
+    for(int i=0;i<2;++i)rivals[i].reset(game.circuit(),game.weather(),i==0?1.0:.88,-.09*(i+1));
+  };
+  resetRivals();
   if(forceGarage){game.requestDamage("carenagem",12);for(int i=0;i<150;i++)game.update({},.05);}
   std::size_t knownDamageEvents=game.simulator().danos().tamanho();
   auto knownPhase=game.simulator().fase();
@@ -366,18 +386,19 @@ int main(int argc,char**argv){
      if(k==13||k==1073741912){menuOpen=false;}
      if(k==1073741892){fullscreen=!fullscreen;SDL_SetWindowFullscreen(window,fullscreen?0x00001001u:0u);}
      if(k=='q')quality=(quality+1)%4;
-     if(k=='l' && menuOpen){const int n=game.targetLaps();game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);reloadRecord();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
-     if(k=='t' && menuOpen){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%3));reloadRecord();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+     if(k=='l' && menuOpen){const int n=game.targetLaps();game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);reloadRecord();resetRivals();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+     if(k=='k' && menuOpen){rivalCount=(rivalCount+1)%3;resetRivals();}
+     if(k=='t' && menuOpen){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%3));reloadRecord();resetRivals();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
      if(!menuOpen){
        if(k=='m')mapOpen=!mapOpen;
        if(k=='g')ghostVisible=!ghostVisible;
        if(k=='v')muted=!muted;
        if(k=='p')paused=!paused;
-       if(k=='r'){game.restart();reloadRecord();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+       if(k=='r'){game.restart();reloadRecord();resetRivals();smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
        if(k=='c')game.setAutopilot(!game.autopilot());
        if(k=='x')game.requestDamage("carenagem",10.);
        if(k=='z')game.requestDamage("chassi",18.);
-       if(k>='1'&&k<='5'){game.setWeather((phoenix::Weather)(k-'1'));reloadRecord();}
+       if(k>='1'&&k<='5'){game.setWeather((phoenix::Weather)(k-'1'));reloadRecord();for(auto& bot:rivals)bot.setWeather(game.weather());}
      }
     }
    }
@@ -385,7 +406,7 @@ int main(int argc,char**argv){
    phoenix::Input in{};in.throttle=kb[26]||kb[82];in.brake=kb[22]||kb[81];in.left=kb[4]||kb[80];in.right=kb[7]||kb[79];
    std::uint32_t now=SDL_GetTicks();double dt=std::min(.075,(now-ticks)*.001);ticks=now;
    if(maxFrames>0)dt=1.0/60.0;
-   if(!paused && !menuOpen){accumulator+=dt;int steps=0;while(accumulator>=1./120.&&steps<12){game.update(in,1./120.);accumulator-=1./120.;++steps;}if(steps==12)accumulator=0;if(game.garage()&&!benchmark){float direction=(in.right?1.f:0.f)-(in.left?1.f:0.f);orbit+=(float)dt*(direction!=0?direction*1.45f:.22f);}else orbit+=(float)dt*.27f;}
+   if(!paused && !menuOpen){accumulator+=dt;int steps=0;while(accumulator>=1./120.&&steps<12){game.update(in,1./120.);if(!game.finished())for(int i=0;i<rivalCount;++i)rivals[i].update(1./120.,game.targetLaps());accumulator-=1./120.;++steps;}if(steps==12)accumulator=0;if(game.garage()&&!benchmark){float direction=(in.right?1.f:0.f)-(in.left?1.f:0.f);orbit+=(float)dt*(direction!=0?direction*1.45f:.22f);}else orbit+=(float)dt*.27f;}
    if(!benchmark && !recordDir.empty() && game.bestLapTime()>0. &&
        (recordedBest==0. || game.bestLapTime()<recordedBest-.000001)){
      const bool saved=game.saveRecord(recordFile());
@@ -417,7 +438,13 @@ int main(int argc,char**argv){
        const auto &ranking=game.simulator().componenteMaisCritico();set2(gl,p,"u_camera",mapOpen?0.f:smx,mapOpen?0.f:smy);set2(gl,p,"u_car",(float)game.vehicle().x,(float)game.vehicle().y);
        setf(gl,p,"u_heading",(float)game.vehicle().angle);setf(gl,p,"u_zoom",mapOpen?17.f:2.85f);
        const auto gh=game.ghostPose();
-       setf(gl,p,"u_hasGhost",game.hasGhost()&&ghostVisible?1.f:0.f);set2(gl,p,"u_ghostPos",(float)gh.x,(float)gh.y);setf(gl,p,"u_ghostHeading",(float)gh.angle);
+       setf(gl,p,"u_hasGhost",game.hasGhost()&&ghostVisible?1.f:0.f);
+       setf(gl,p,"u_rivalCount",(float)rivalCount);
+       for(int i=0;i<2;++i){
+           const auto other=rivals[i].pose();
+           set2(gl,p,i==0?"u_rival0":"u_rival1",(float)other.x,(float)other.y);
+           setf(gl,p,i==0?"u_rivalAngle0":"u_rivalAngle1",(float)other.angle);
+       }set2(gl,p,"u_ghostPos",(float)gh.x,(float)gh.y);setf(gl,p,"u_ghostHeading",(float)gh.angle);
        gl.ActiveTexture(TEXTURE0);gl.BindTexture(TEXTURE_2D,spriteTexture);gl.Uniform1i(uniform(gl,p,"u_kartSprite"),0);
        gl.ActiveTexture(TEXTURE0+1);gl.BindTexture(TEXTURE_2D,asphaltPhoto);gl.Uniform1i(uniform(gl,p,"u_asphaltPhoto"),1);
        gl.ActiveTexture(TEXTURE0+2);gl.BindTexture(TEXTURE_2D,asphaltNormal);gl.Uniform1i(uniform(gl,p,"u_asphaltNormal"),2);
@@ -443,7 +470,7 @@ int main(int argc,char**argv){
       gl.DrawArrays(TRIANGLES,0,3);
    }
    ui.verts.clear();ui.letterVerts.clear();
-   if(menuOpen)drawMenu(ui,w,h,quality,game.circuit(),game.targetLaps()); else drawHUD(ui,game,w,h,quality,paused,fps,ghostVisible);
+   if(menuOpen)drawMenu(ui,w,h,quality,game.circuit(),game.targetLaps(),rivalCount); else drawHUD(ui,game,rivals,rivalCount,w,h,quality,paused,fps,ghostVisible);
    gl.Enable(BLEND);gl.BlendFunc(SRC_ALPHA,ONE_MINUS_SRC_ALPHA);
    gl.UseProgram(uiProg);set2(gl,uiProg,"res",(float)w,(float)h);
    gl.BindVertexArray(uiVAO);gl.BindBuffer(ARRAY,uiVBO);
@@ -483,7 +510,8 @@ int main(int argc,char**argv){
     double wall=std::chrono::duration<double>(std::chrono::steady_clock::now()-benchStart).count();
     std::cout<<"BENCHMARK frames="<<frame<<" seconds="<<wall<<" avg_fps="<<(wall>0?frame/wall:0.)
              <<" ms_per_frame="<<(frame>0?wall*1000./frame:0.)<<" quality="<<quality<<"\n";std::cout<<"SCENE_COUNTS race="<<measuredRace<<" garage="<<measuredGarage<<" menu="<<measuredMenu<<"\n";
-    std::cout<<"GAMEPLAY laps="<<game.validCompletedLaps()<<" traversed="<<game.vehicle().lap<<" elapsed="<<game.worldTime()<<" damage_events="<<game.simulator().danos().tamanho()<<" finished="<<game.finished()<<"\n";
+    std::cout<<"RIVALS active="<<rivalCount;for(int i=0;i<rivalCount;++i)std::cout<<" ai"<<i<<"_lap="<<rivals[i].laps()<<"_progress="<<rivals[i].totalProgress()/6.283185307179586;std::cout<<"\n";
+  std::cout<<"GAMEPLAY laps="<<game.validCompletedLaps()<<" traversed="<<game.vehicle().lap<<" elapsed="<<game.worldTime()<<" damage_events="<<game.simulator().danos().tamanho()<<" finished="<<game.finished()<<"\n";
     if(!frameMs.empty()){double mean=std::accumulate(frameMs.begin(),frameMs.end(),0.)/frameMs.size();std::cout<<"MEASURED frames="<<frameMs.size()<<" warmup="<<warmup<<" fps="<<1000./mean<<" mean_ms="<<mean<<"\n";std::sort(frameMs.begin(),frameMs.end());auto pct=[&](double p){return frameMs[(std::size_t)((frameMs.size()-1)*p)];};std::cout<<"FRAME_MS p50="<<pct(.5)<<" p95="<<pct(.95)<<" p99="<<pct(.99)<<" max="<<frameMs.back()<<"\n";}
   }
   scaledScene.reset(gl);gl.DeleteTextures(1,&fontTexture);gl.DeleteTextures(1,&menuTexture);gl.DeleteTextures(1,&spriteTexture);gl.DeleteTextures(1,&asphaltPhoto);gl.DeleteTextures(1,&asphaltNormal);gl.DeleteTextures(1,&concretePhoto);gl.DeleteTextures(1,&concreteNormal);engineAudio.stop();mesh.destroy(gl);

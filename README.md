@@ -51,3 +51,6 @@ Uma volta vÃ¡lida grava a trajetÃ³ria C++17 na memÃ³ria (mÃ¡ximo de 4096 amostra
 
 ## 0.9.12 — recordes persistentes
 O melhor tempo e a trajetória do fantasma são gravados no diretório de preferências do usuário (SDL2), separados por pista e clima. Não precisam de nuvem. Recordes inválidos são rejeitados, e benchmarks não alteram arquivos pessoais. A mudança do clima no meio da volta invalida a tentativa de recorde.
+
+## 0.9.13 — adversários de tempo
+Dois rivais C++17 seguem o traçado com velocidades diferentes e desaceleram no mau tempo. Escolha 0, 1 ou 2 oponentes pressionando K no menu, ou use --rivals 0|1|2. São concorrentes não-colidentes: ainda não possuem desvio de obstáculos ou contato físico. O HUD e o minimapa indicam os participantes.

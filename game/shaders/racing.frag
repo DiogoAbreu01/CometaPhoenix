@@ -8,6 +8,9 @@ uniform float u_heading;
 uniform vec2 u_ghostPos;
 uniform float u_ghostHeading;
 uniform float u_hasGhost;
+uniform float u_rivalCount;
+uniform vec2 u_rival0,u_rival1;
+uniform float u_rivalAngle0,u_rivalAngle1;
 uniform float u_zoom;
 uniform float u_weather;
 uniform float u_speed;
@@ -195,6 +198,18 @@ vec3 kart(vec2 p,vec3 under,float d){
  return col;
 }
 
+// Two procedural C++17 rivals. Sprite is sampled only near each kart.
+vec3 racingRival(vec2 p,vec3 ground,vec2 pos,float heading,vec3 tint){
+ vec2 delta=p-pos;
+ if(dot(delta,delta)>.21)return ground;
+ vec2 q=rot(-heading)*delta;
+ vec2 uv=vec2(.5+q.x*1.8868,.5+q.y*1.8868);
+ if(any(lessThan(uv,vec2(0.))) || any(greaterThan(uv,vec2(1.))))return ground;
+ vec4 sprite=texture(u_kartSprite,uv);
+ vec3 paint=mix(sprite.rgb,tint,.60);
+ float shadow=1.-smoothstep(.12,.26,length(q));
+ return mix(mix(ground,vec3(.01,.01,.02),.22*shadow),paint,sprite.a*.92);
+}
 // Best-lap replay ghost: translucent, non-colliding and sampled from the MK-III sprite.
 vec3 replayGhost(vec2 p,vec3 under){
  if(u_hasGhost<.5)return under;
@@ -228,6 +243,8 @@ void main(){
   float angle=atan(world.y,world.x);
   float d=length(world)-radius(angle);
   vec3 col=baseCol(world,d,angle);
+  if(u_rivalCount>.5)col=racingRival(world,col,u_rival0,u_rivalAngle0,vec3(.93,.11,.10));
+  if(u_rivalCount>1.5)col=racingRival(world,col,u_rival1,u_rivalAngle1,vec3(.99,.68,.07));
   col=replayGhost(world,col);
   col=kart(world,col,d);
   // Luz cinematografica variavel, vinheta, haze e reflexo de lente.

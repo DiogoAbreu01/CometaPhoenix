@@ -60,3 +60,6 @@ cp build/kart_sprite.rgba game/assets/kart_sprite.rgba
 
 ## 0.9.12 — rodada 1: recordes no disco
 Arquivo PHOENIX_GHOST_V1 com versão, circuito, clima, tempo, posições e ângulos; limite de 4096 amostras e 1 MiB, validação estrita e escrita via temporário. Persistência nativa C++17, diretório SDL_GetPrefPath; reload ao reiniciar, mudar pista/clima ou número de voltas. Benchmarks não gravam dados do usuário. CTest 10/10 Windows.
+
+## 0.9.13 — rodada 2: rivais C++17
+Codex BlueLab tarefa 11 criou RivalAI.hpp e testes determinísticos de distância de arco, três pistas, cinco climas e limitação de velocidade. Integração gráfica de dois karts coloridos, mini mapa, seleção via K no menu e --rivals N. 11/11 CTest Windows. RX580 Full HD Ultra chuva 5400 quadros (5370 medidos): 525,457 FPS, p95 2,1615ms, sem danos, 90s simulados, rivais chegaram a ~2,01 e 1,76 voltas. Rivais não colidem nem executam estratégias ofensivas. Captura real em docs/screenshots/0913-rivals.jpg.
