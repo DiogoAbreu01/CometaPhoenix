@@ -17,6 +17,7 @@ uniform float u_box;
 uniform float u_night;
 uniform float u_circuit;
 uniform sampler2D u_kartSprite;
+uniform sampler2D u_asphaltPhoto,u_asphaltNormal;
 #define PI 3.14159265359
 float hash21(vec2 p){p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+vec2(1,1)),f.x),f.y);}
@@ -86,6 +87,8 @@ vec3 baseCol(vec2 p,float d,float angle){
 
   float road=1.-smoothstep(.44-edgeAA,.44+edgeAA,outer);
   vec3 col=ground;
+  vec2 tileUV=p*5.;
+  vec2 tileDX=dFdx(tileUV),tileDY=dFdy(tileUV);
   if(road>0.){
     vec3 asphalt=mix(vec3(.057,.064,.071),vec3(.102,.109,.115),terrain);
     float grainFade=1.-smoothstep(.29,.72,pixel*66.);
@@ -98,6 +101,12 @@ vec3 baseCol(vec2 p,float d,float angle){
       float chip=1.-smoothstep(radius-grainAA,radius+grainAA,length(stone));
       asphalt+=grainFade*(chip*mix(-.020,.058,fract(seed*37.))-.004);
     }
+    // CC0 photo material: diffuse RGB, roughness alpha, independently sampled GL normal.
+    vec4 photo=textureGrad(u_asphaltPhoto,tileUV,tileDX,tileDY);
+    vec3 realColor=pow(max(photo.rgb,vec3(.001)),vec3(2.2));
+    vec3 realNormal=textureGrad(u_asphaltNormal,tileUV,tileDX,tileDY).xyz*2.-1.;
+    float lit=clamp(.82+.27*dot(realNormal,normalize(vec3(-.5,.6,.55))),.6,1.12);
+    asphalt=mix(asphalt,realColor*.82*lit+vec3(.018),.83);
     // Rain and storm share the wet surface. Snow and fog use their own effects.
     bool storm=u_weather>2.5 && u_weather<3.5;
     if((u_weather>.5 && u_weather<1.5) || storm){
@@ -105,7 +114,7 @@ vec3 baseCol(vec2 p,float d,float angle){
       float wetEdge=1.-smoothstep(.31,.42,outer);
       float puddle=smoothstep(storm?.53:.63,storm?.66:.75,basin)*wetEdge;
       float sky=smoothstep(.12,.83,terrain);
-      asphalt=mix(asphalt*.79,mix(vec3(.030,.049,.068),vec3(.13,.18,.22),sky),puddle*.84);
+      asphalt=mix(asphalt*.79,mix(vec3(.030,.049,.068),vec3(.13,.18,.22),sky),puddle*mix(.88,.60,photo.a));
     }
     col=mix(ground,asphalt,road);
   }

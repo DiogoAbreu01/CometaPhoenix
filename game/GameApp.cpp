@@ -68,7 +68,7 @@ struct GLApi{
  GLFUN(ReadPixels,void,GLint,GLint,GLsizei,GLsizei,GLenum,GLenum,void*) GLFUN(GetString,const unsigned char*,GLenum)
  GLFUN(GenTextures,void,GLsizei,GLuint*) GLFUN(DeleteTextures,void,GLsizei,const GLuint*) GLFUN(BindTexture,void,GLenum,GLuint)
  GLFUN(TexImage2D,void,GLenum,GLint,GLint,GLsizei,GLsizei,GLint,GLenum,GLenum,const void*)
- GLFUN(TexParameteri,void,GLenum,GLenum,GLint) GLFUN(ActiveTexture,void,GLenum)
+ GLFUN(TexParameteri,void,GLenum,GLenum,GLint) GLFUN(ActiveTexture,void,GLenum) GLFUN(GenerateMipmap,void,GLenum)
  GLFUN(GenFramebuffers,void,GLsizei,GLuint*) GLFUN(BindFramebuffer,void,GLenum,GLuint) GLFUN(DeleteFramebuffers,void,GLsizei,const GLuint*)
  GLFUN(GenRenderbuffers,void,GLsizei,GLuint*) GLFUN(BindRenderbuffer,void,GLenum,GLuint) GLFUN(RenderbufferStorage,void,GLenum,GLenum,GLsizei,GLsizei) GLFUN(FramebufferRenderbuffer,void,GLenum,GLenum,GLenum,GLuint) GLFUN(DeleteRenderbuffers,void,GLsizei,const GLuint*)
  GLFUN(FramebufferTexture2D,void,GLenum,GLenum,GLenum,GLuint,GLint) GLFUN(CheckFramebufferStatus,GLenum,GLenum)
@@ -80,7 +80,7 @@ struct GLApi{
  LOAD(GetUniformLocation)LOAD(Uniform1f)LOAD(Uniform2f)LOAD(Uniform1i)LOAD(GenVertexArrays)LOAD(BindVertexArray)LOAD(DeleteVertexArrays)
  LOAD(GenBuffers)LOAD(BindBuffer)LOAD(BufferData)LOAD(EnableVertexAttribArray)LOAD(VertexAttribPointer)LOAD(Viewport)LOAD(DrawArrays)
  LOAD(ClearColor)LOAD(Clear)LOAD(Enable)LOAD(Disable)LOAD(BlendFunc)LOAD(ReadPixels)LOAD(GetString)
- LOAD(GenTextures)LOAD(DeleteTextures)LOAD(BindTexture)LOAD(TexImage2D)LOAD(TexParameteri)LOAD(ActiveTexture)
+ LOAD(GenTextures)LOAD(DeleteTextures)LOAD(BindTexture)LOAD(TexImage2D)LOAD(TexParameteri)LOAD(ActiveTexture)LOAD(GenerateMipmap)
  LOAD(GenRenderbuffers)LOAD(BindRenderbuffer)LOAD(RenderbufferStorage)LOAD(FramebufferRenderbuffer)LOAD(DeleteRenderbuffers)
  LOAD(GenFramebuffers)LOAD(BindFramebuffer)LOAD(DeleteFramebuffers)LOAD(FramebufferTexture2D)LOAD(CheckFramebufferStatus)
  #undef LOAD
@@ -135,10 +135,10 @@ std::vector<unsigned char> readBinary(const std::filesystem::path& file,std::siz
  if(bytes.size()!=expected)throw std::runtime_error("Tamanho invalido de asset: "+file.string());
  return bytes;
 }
-GLuint loadTex(GLApi&gl,int w,int h,GLenum fmt,const unsigned char* data){
+GLuint loadTex(GLApi&gl,int w,int h,GLenum fmt,const unsigned char* data,bool tile=false){
  GLuint t=0;gl.GenTextures(1,&t);gl.BindTexture(TEXTURE_2D,t);gl.TexImage2D(TEXTURE_2D,0,(GLint)fmt,w,h,0,fmt,UNSIGNED_BYTE,data);
  gl.TexParameteri(TEXTURE_2D,TEX_MIN,LINEAR);gl.TexParameteri(TEXTURE_2D,TEX_MAG,LINEAR);
- gl.TexParameteri(TEXTURE_2D,TEX_WRAP_S,CLAMP);gl.TexParameteri(TEXTURE_2D,TEX_WRAP_T,CLAMP);return t;
+ gl.TexParameteri(TEXTURE_2D,TEX_WRAP_S,tile?0x2901:CLAMP);gl.TexParameteri(TEXTURE_2D,TEX_WRAP_T,tile?0x2901:CLAMP);if(tile){gl.GenerateMipmap(TEXTURE_2D);gl.TexParameteri(TEXTURE_2D,TEX_MIN,0x2703);}return t;
 }
 struct RenderTarget{
  GLuint texture{},framebuffer{},depth{};int w{},h{};
@@ -312,6 +312,10 @@ int main(int argc,char**argv){
   GLuint menuTexture=loadTex(gl,1280,720,RGB,menuBytes.data());
   auto sprite=readBinary(assetDir/"kart_sprite.rgba",512*512*4);
   GLuint spriteTexture=loadTex(gl,512,512,RGBA,sprite.data());
+  const auto asphaltPixels=readBinary(assetDir/"asphalt_photo.rgba",512*512*4);
+  const auto asphaltNormals=readBinary(assetDir/"asphalt_normal.rgb",512*512*3);
+  GLuint asphaltPhoto=loadTex(gl,512,512,RGBA,asphaltPixels.data(),true);
+  GLuint asphaltNormal=loadTex(gl,512,512,RGB,asphaltNormals.data(),true);
   KartMesh mesh(gl,assetDir/"kart.mesh");
   EngineAudio engineAudio;
   if(!benchmark) engineAudio.start();
@@ -379,6 +383,9 @@ int main(int argc,char**argv){
        const auto &ranking=game.simulator().componenteMaisCritico();set2(gl,p,"u_camera",mapOpen?0.f:smx,mapOpen?0.f:smy);set2(gl,p,"u_car",(float)game.vehicle().x,(float)game.vehicle().y);
        setf(gl,p,"u_heading",(float)game.vehicle().angle);setf(gl,p,"u_zoom",mapOpen?17.f:2.85f);
        gl.ActiveTexture(TEXTURE0);gl.BindTexture(TEXTURE_2D,spriteTexture);gl.Uniform1i(uniform(gl,p,"u_kartSprite"),0);
+       gl.ActiveTexture(TEXTURE0+1);gl.BindTexture(TEXTURE_2D,asphaltPhoto);gl.Uniform1i(uniform(gl,p,"u_asphaltPhoto"),1);
+       gl.ActiveTexture(TEXTURE0+2);gl.BindTexture(TEXTURE_2D,asphaltNormal);gl.Uniform1i(uniform(gl,p,"u_asphaltNormal"),2);
+       gl.ActiveTexture(TEXTURE0);
        setf(gl,p,"u_weather",(float)(int)game.weather());setf(gl,p,"u_speed",(float)game.vehicle().speed);
        setf(gl,p,"u_flash",0.f);setf(gl,p,"u_integrity",(float)ranking.integridade);
        const auto& id=ranking.id;
@@ -427,7 +434,7 @@ int main(int argc,char**argv){
              <<" ms_per_frame="<<(frame>0?wall*1000./frame:0.)<<" quality="<<quality<<"\n";std::cout<<"SCENE_COUNTS race="<<measuredRace<<" garage="<<measuredGarage<<" menu="<<measuredMenu<<"\n";
     if(!frameMs.empty()){double mean=std::accumulate(frameMs.begin(),frameMs.end(),0.)/frameMs.size();std::cout<<"MEASURED frames="<<frameMs.size()<<" warmup="<<warmup<<" fps="<<1000./mean<<" mean_ms="<<mean<<"\n";std::sort(frameMs.begin(),frameMs.end());auto pct=[&](double p){return frameMs[(std::size_t)((frameMs.size()-1)*p)];};std::cout<<"FRAME_MS p50="<<pct(.5)<<" p95="<<pct(.95)<<" p99="<<pct(.99)<<" max="<<frameMs.back()<<"\n";}
   }
-  scaledScene.reset(gl);gl.DeleteTextures(1,&fontTexture);gl.DeleteTextures(1,&menuTexture);gl.DeleteTextures(1,&spriteTexture);engineAudio.stop();mesh.destroy(gl);
+  scaledScene.reset(gl);gl.DeleteTextures(1,&fontTexture);gl.DeleteTextures(1,&menuTexture);gl.DeleteTextures(1,&spriteTexture);gl.DeleteTextures(1,&asphaltPhoto);gl.DeleteTextures(1,&asphaltNormal);engineAudio.stop();mesh.destroy(gl);
   gl.DeleteBuffers(1,&uiVBO);gl.DeleteBuffers(1,&fontVBO);gl.DeleteVertexArrays(1,&quadVAO);gl.DeleteVertexArrays(1,&uiVAO);gl.DeleteVertexArrays(1,&fontVAO);
   gl.DeleteProgram(race);gl.DeleteProgram(garage);gl.DeleteProgram(uiProg);gl.DeleteProgram(fontProg);gl.DeleteProgram(menuProg);gl.DeleteProgram(meshProg);gl.DeleteProgram(upProg);
   SDL_GL_DeleteContext(ctx);SDL_DestroyWindow(window);SDL_Quit();

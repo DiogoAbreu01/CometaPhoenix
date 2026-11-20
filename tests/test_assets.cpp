@@ -18,6 +18,8 @@ int main(int argc,char** argv){
  REQUIRE(*std::max_element(is.begin(),is.end())<v);
  REQUIRE(std::all_of(vs.begin(),vs.end(),[](float x){return std::isfinite(x);}));
  REQUIRE(std::filesystem::file_size(dir/"kart_sprite.rgba")==512*512*4);
+ REQUIRE(std::filesystem::file_size(dir/"asphalt_photo.rgba")==512*512*4);
+ REQUIRE(std::filesystem::file_size(dir/"asphalt_normal.rgb")==512*512*3);
  REQUIRE(std::filesystem::file_size(dir/"phoenix_ui_atlas.r8")==768*360);
  REQUIRE(std::filesystem::file_size(dir/"phoenix_cinematic_menu.rgb")==1280*720*3);
  std::cout<<"Malha: "<<v<<" vertices; "<<i/3<<" triangulos. Assets corretos.\n";
