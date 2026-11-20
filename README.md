@@ -1,4 +1,4 @@
-# Cometa Phoenix — 0.9.15 (candidato nativo)
+# Cometa Phoenix — 0.9.16 (candidato nativo)
 
 Projeto ECOP13A / LAB12–LAB14. Corrida 2D com três circuitos e cinco condições climáticas, oficina 3D com diagnóstico, regeneração e abandono. Aplicativo e motor C++17 com SDL2/OpenGL 3.3 e shaders GLSL. Não depende de navegador nem JavaScript. Modelo físico didático, não certificado.
 
@@ -71,3 +71,6 @@ Para realizar uma partida de QA sem alterar seus dados: cometa_game --frames 360
 - Menu: H apresenta as ultimas cinco corridas, B troca layout WASD/IJKL/setas, N muda as cores dos rivais, -/+ volume. Gamepad SDL2: direcao no stick esquerdo, gatilhos como aceleracao/freio, Start pausa. Dispositivo nao foi testado fisicamente.
 - Spray de pneu procedural em chuva/temporal. [Menu](docs/screenshots/0915-menu.jpg), [corrida](docs/screenshots/0915-race.jpg), [oficina](docs/screenshots/0915-garage.jpg).
 - Testes: ctest --test-dir build-win --output-on-failure. Opcional: cometa_race_stress_tests --minutes 30 (tempo de simulacao acelerado, nao teste termico/manual).
+
+## 0.9.16 — ajuste de estabilidade
+No menu, F liga/desliga a guia de trajetoria; B alterna esquemas de teclado. Colisoes graves entre karts agora exigem velocidade relativa normal de pelo menos 10,5 m/s, reduzindo reparos por contatos leves. Benchmarks emitem RIVAL_HARD_CONTACT para contatos graves.

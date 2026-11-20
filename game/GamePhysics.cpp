@@ -189,7 +189,7 @@ KartContactEvent Game::collideRival(const GhostPose& rival,const GhostPose& prev
     vehicle_.angle=normAngle(vehicle_.angle+std::clamp(side*incoming*.014,-.28,.28));
     vehicle_.lateral+=side*incoming/9.80665;
     if(incoming>2.4)validLap_=false;
-    if(incoming>=6.0 && worldTime_-lastImpact_>2.2) {
+    if(incoming>=15.0 && worldTime_-lastImpact_>2.2) {
         const bool left=side>0.;
         const bool front=std::cos(vehicle_.angle)*(-contact.nx)+std::sin(vehicle_.angle)*(-contact.ny)>.25;
         requestCollision(std::clamp(incoming*3.6,1.,102.),.95,left,front);

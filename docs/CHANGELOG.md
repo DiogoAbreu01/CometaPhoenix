@@ -80,3 +80,6 @@ Codex BlueLab tarefa 11 criou RivalAI.hpp e testes determinísticos de distânci
 - Windows 15/15 CTest. Teste de estresse C++17: 30 minutos simulados em cada pista sem NaNs. Nao substitui sessao humana real nem benchmarking termico.
 - RX580, 1080p Ultra, 360 quadros, captura: corrida chuva com rivais 313,574 FPS, menu 310,714, oficina 522,282 (medias medidas). Capturas reais em docs/screenshots/0915-*.jpg.
 - Limitacoes: IA e contato simplificados, hardware gamepad nao testado, nenhuma prova de estabilidade termica longa, qualidade grafica ainda nao fotorrealista. Linux/Windows CI desta revisao pendente.
+
+## 0.9.16 — ajuste pos-validacao
+Correcao de conflito entre tecla B (layout) e guia de trajetoria (F), indicador explicito no menu, limite de dano de colisao de 10,5 m/s para reduzir incidentes leves e logs de impacto grave no benchmark. Build local 15/15, smoke RX580 Full HD chuva 404,25 FPS medidos com 600 quadros, p95 2,624 ms. Continuam pendentes homologacao manual e testes termicos.

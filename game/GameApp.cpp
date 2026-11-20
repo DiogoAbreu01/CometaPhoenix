@@ -288,6 +288,7 @@ void drawMenu(UI &ui,int w,int h,int quality,phoenix::Circuit circuit,int laps,i
  ui.text("[ L ] VOLTAS: "+(laps?intStr(laps):std::string("LIVRE")),84*S,518*S,2*S,MUTED);
  ui.text("[K] RIVAIS "+intStr(rivals)+"   [D] IA "+std::string(difficulty==0?"FACIL":difficulty==2?"DIFICIL":"MEDIA"),84*S,554*S,1.8f*S,MUTED);
  ui.text("[ - / + ] VOLUME "+intStr(volumePct)+"%   [ H ] HISTORICO",84*S,592*S,1.7f*S,WHITE);
+ ui.text(std::string("[ F ] TRAJETORIA: ")+(accessible?"ASSISTENCIA":"GUIA"),84*S,645*S,1.25f*S,CYAN);
  ui.text(std::string("[ B ] TECLAS: ")+(controlLayout==0?"WASD":controlLayout==1?"IJKL":"SETAS")+
          (accessible?"   [ N ] CORES ON":"   [ N ] CORES OFF"),84*S,630*S,1.42f*S,MUTED);
  if(showHistory){
@@ -422,7 +423,7 @@ int main(int argc,char**argv){
      if(k=='b' && menuOpen)controlLayout=(controlLayout+1)%3;
      if(k=='n' && menuOpen)accessible=!accessible;
      if(k=='q')quality=(quality+1)%4;
-     if(k=='b' && menuOpen)racingAssist=!racingAssist;
+     if(k=='f' && menuOpen)racingAssist=!racingAssist;
      if(k=='-' || k==1073741910)masterVolume=std::max(0.f,masterVolume-.1f);
      if(k=='=' || k=='+' || k==1073741911)masterVolume=std::min(1.f,masterVolume+.1f);
      if(k=='l' && menuOpen){const int n=game.targetLaps();game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
@@ -473,6 +474,7 @@ int main(int argc,char**argv){
        }
        for(int i=0;i<rivalCount;++i){
          const auto collision=game.collideRival(rivals[i].pose(),prior[i],1./120.);
+         if(collision.damaged && benchmark)std::cout<<"RIVAL_HARD_CONTACT t="<<game.worldTime()<<" rival="<<i<<" closing_ms="<<collision.closingSpeedMs<<"\n";
          if(collision.impulseApplied)rivals[i].applyContact(collision.closingSpeedMs);
        }
        if(rivalCount==2 && rivalCollisionCooldown<=0.){
