@@ -1,4 +1,4 @@
-# Cometa Phoenix — 0.9.11 (candidato nativo)
+# Cometa Phoenix — 0.9.14 (candidato nativo)
 
 Projeto ECOP13A / LAB12–LAB14. Corrida 2D com três circuitos e cinco condições climáticas, oficina 3D com diagnóstico, regeneração e abandono. Aplicativo e motor C++17 com SDL2/OpenGL 3.3 e shaders GLSL. Não depende de navegador nem JavaScript. Modelo físico didático, não certificado.
 
@@ -49,8 +49,16 @@ Audio: engine wavetable original com seis marchas virtuais e SFX procedurais dis
 
 Uma volta válida grava a trajetória C++17 na memória (máximo de 4096 amostras); nas voltas seguintes, o fantasma ciano reproduz o recorde com interpolação. A tecla G alterna sua visibilidade. Trocar de circuito ou reiniciar apaga a gravação. Não existe salvamento entre partidas. O fantasma não colide com o kart. [Captura real na RX 580](docs/screenshots/0911-ghost-fullhd.jpg).
 
-## 0.9.12 � recordes persistentes
-O melhor tempo e a trajet�ria do fantasma s�o gravados no diret�rio de prefer�ncias do usu�rio (SDL2), separados por pista e clima. N�o precisam de nuvem. Recordes inv�lidos s�o rejeitados, e benchmarks n�o alteram arquivos pessoais. A mudan�a do clima no meio da volta invalida a tentativa de recorde.
+## 0.9.12 — recordes persistentes
+O melhor tempo e a trajetória do fantasma são gravados no diretório de preferências do usuário (SDL2), separados por pista e clima. Não precisam de nuvem. Recordes inválidos são rejeitados, e benchmarks não alteram arquivos pessoais. A mudança do clima no meio da volta invalida a tentativa de recorde.
 
-## 0.9.13 � advers�rios de tempo
-Dois rivais C++17 seguem o tra�ado com velocidades diferentes e desaceleram no mau tempo. Escolha 0, 1 ou 2 oponentes pressionando K no menu, ou use --rivals 0|1|2. S�o concorrentes n�o-colidentes: ainda n�o possuem desvio de obst�culos ou contato f�sico. O HUD e o minimapa indicam os participantes.
+## 0.9.13 — adversários de tempo
+Dois rivais C++17 seguem o traçado com velocidades diferentes e desaceleram no mau tempo. Escolha 0, 1 ou 2 oponentes pressionando K no menu, ou use --rivals 0|1|2. São concorrentes não-colidentes: ainda não possuem desvio de obstáculos ou contato físico. O HUD e o minimapa indicam os participantes.
+
+## 0.9.14 — histórico de corridas e QA
+
+Ao terminar uma corrida ou abandonar por dano crítico, o jogo acrescenta uma linha ao arquivo race_history.csv no mesmo diretório de preferências do SDL2 usado pelos recordes, com circuito, clima, voltas válidas, posição, tempo e danos. O arquivo pode ser aberto em um editor de planilhas. A UI mostra a posição final e o placar durante a prova.
+
+Para realizar uma partida de QA sem alterar seus dados: cometa_game --frames 3600 --no-vsync --data-dir caminho_de_teste --autopilot --rivals 2 --circuit 0 --weather rain --laps 1. O teste deve gerar race_history.csv e record_c0_w1.phx no diretório escolhido. Sem --no-vsync, o jogo mantém o limite do monitor. Benchmarks não gravam arquivos pessoais.
+
+[Captura real da chegada com dois rivais](docs/screenshots/0914-finish.jpg). [Roadmap e pendências técnicas](docs/ROADMAP_1_0.md).

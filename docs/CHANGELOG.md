@@ -58,8 +58,15 @@ cp build/kart_sprite.rgba game/assets/kart_sprite.rgba
 - Windows Release, RX 580 2048SP, Full HD Ultra chuva, corrida com piloto automático: 3300 quadros (3270 medidos), uma volta concluída e fantasma presente após o primeiro recorde, zero dano; 430,291 FPS médios medidos, P95 2,514 ms, P99 2,581 ms. Sem VSync e som, 7,8 segundos reais; não é teste térmico prolongado. CTest 10/10.
 - Captura real: docs/screenshots/0911-ghost-fullhd.jpg. Linux CI da revisão, validação de controles manuais e homologação final pendentes. TITAN 35B não foi executado nesta etapa por instabilidade anterior em consultas; BlueLab/Codex efetivamente utilizados. IC intocada.
 
-## 0.9.12 � rodada 1: recordes no disco
-Arquivo PHOENIX_GHOST_V1 com vers�o, circuito, clima, tempo, posi��es e �ngulos; limite de 4096 amostras e 1 MiB, valida��o estrita e escrita via tempor�rio. Persist�ncia nativa C++17, diret�rio SDL_GetPrefPath; reload ao reiniciar, mudar pista/clima ou n�mero de voltas. Benchmarks n�o gravam dados do usu�rio. CTest 10/10 Windows.
+## 0.9.12 — rodada 1: recordes no disco
+Arquivo PHOENIX_GHOST_V1 com versão, circuito, clima, tempo, posições e ângulos; limite de 4096 amostras e 1 MiB, validação estrita e escrita via temporário. Persistência nativa C++17, diretório SDL_GetPrefPath; reload ao reiniciar, mudar pista/clima ou número de voltas. Benchmarks não gravam dados do usuário. CTest 10/10 Windows.
 
-## 0.9.13 � rodada 2: rivais C++17
-Codex BlueLab tarefa 11 criou RivalAI.hpp e testes determin�sticos de dist�ncia de arco, tr�s pistas, cinco climas e limita��o de velocidade. Integra��o gr�fica de dois karts coloridos, mini mapa, sele��o via K no menu e --rivals N. 11/11 CTest Windows. RX580 Full HD Ultra chuva 5400 quadros (5370 medidos): 525,457 FPS, p95 2,1615ms, sem danos, 90s simulados, rivais chegaram a ~2,01 e 1,76 voltas. Rivais n�o colidem nem executam estrat�gias ofensivas. Captura real em docs/screenshots/0913-rivals.jpg.
+## 0.9.13 — rodada 2: rivais C++17
+Codex BlueLab tarefa 11 criou RivalAI.hpp e testes determinísticos de distância de arco, três pistas, cinco climas e limitação de velocidade. Integração gráfica de dois karts coloridos, mini mapa, seleção via K no menu e --rivals N. 11/11 CTest Windows. RX580 Full HD Ultra chuva 5400 quadros (5370 medidos): 525,457 FPS, p95 2,1615ms, sem danos, 90s simulados, rivais chegaram a ~2,01 e 1,76 voltas. Rivais não colidem nem executam estratégias ofensivas. Captura real em docs/screenshots/0913-rivals.jpg.
+
+## 0.9.14 — rodada 3: resultados + verificação completa
+- Cabeçalho C++17 RaceResults.hpp: cálculo único de colocação, validação de dados e histórico CSV append-only (máximo 8 MiB). Registra conclusão ou abandono, pista, clima, voltas, rivais, posição, tempo, melhor volta e número de impactos.
+- No HUD há colocação da corrida, e a tela de chegada exibe a classificação. Flags --data-dir e --no-vsync permitem QA real com arquivos isolados da configuração pessoal.
+- CTest Windows Release: 12/12, incluindo simulador de adversários e teste de escrita/arquivo corrompido. Teste end-to-end via executável real, com áudio: 3600 quadros sem VSync em 720p; foram gravados race_history.csv (164 B) e record_c0_w1.phx (~186 kB) em pasta de QA. Resultado 1 volta válida em 41,892 s, 3ª posição com dois rivais, 0 danos.
+- Smoke da chegada em RX580 Full HD Ultra, 3600 quadros (3570 medidos), chuva, dois rivais: 420,374 FPS, p95 2,5724 ms, p99 2,6292 ms. Teste acelerado sem VSync; não é partida longa/manual. Captura real docs/screenshots/0914-finish.jpg.
+- Documento ROADMAP_1_0.md lista requisitos finais e prioridades futuras. Linux e Windows CI desta versão ainda precisam ser confirmados após o push. IC permaneceu intocada.
