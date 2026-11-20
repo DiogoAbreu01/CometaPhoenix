@@ -31,6 +31,10 @@ public:
     double repairFraction() const noexcept;
     double trackOffset() const noexcept;
     double lapProgress() const noexcept;
+    double currentLapTime() const noexcept { return currentLapTime_; }
+    double lastLapTime() const noexcept { return lastLapTime_; }
+    double bestLapTime() const noexcept { return bestLapTime_; }
+    bool validLap() const noexcept { return validLap_; }
     void setAutopilot(bool b) noexcept { autopilot_=b; }
     bool autopilot() const noexcept { return autopilot_; }
     std::string status() const;
@@ -42,5 +46,7 @@ private:
     double worldTime_{0}, cinematic_{0}, lastImpact_{-100};
     bool autopilot_{false};
     double lastPolarAngle_{0}, orbitTurns_{0};
+    double currentLapTime_{}, lastLapTime_{}, bestLapTime_{};
+    bool validLap_{true};
 };
 }

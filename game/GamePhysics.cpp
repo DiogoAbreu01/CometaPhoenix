@@ -11,12 +11,12 @@ double normAngle(double a) {return std::atan2(std::sin(a),std::cos(a));}
 const char* weatherName(Weather w) noexcept {switch(w){case Weather::Sunny:return "SOL";case Weather::Rain:return "CHUVA";case Weather::Snow:return "NEVE";case Weather::Storm:return "TEMPESTADE";case Weather::Fog:return "NEBLINA";}return "?";}
 Climate climate(Weather w) noexcept {switch(w){case Weather::Sunny:return {1.,1.,0,28,.02,1};case Weather::Rain:return {.69,.78,.7,17,.23,1.08};case Weather::Snow:return {.39,.74,.64,-4,.11,1.3};case Weather::Storm:return {.51,.49,1.,16,.62,1.18};case Weather::Fog:return {.83,.35,.12,12,.04,1.08};}return {1,1,0,28,0,1};}
 Game::Game(std::uint32_t seed):seed_(seed){restart(seed);}
-void Game::restart(std::uint32_t seed){seed_=seed;sim_=std::make_unique<cometa::Simulacao>("normal", seed);vehicle_={}; vehicle_.x=targetRadius(0);vehicle_.y=0;vehicle_.angle=PI/2;lastPolarAngle_=0;orbitTurns_=0;worldTime_=0;cinematic_=0;lastImpact_=-100;}
+void Game::restart(std::uint32_t seed){seed_=seed;sim_=std::make_unique<cometa::Simulacao>("normal", seed);vehicle_={}; vehicle_.x=targetRadius(0);vehicle_.y=0;vehicle_.angle=PI/2;lastPolarAngle_=0;orbitTurns_=0;worldTime_=0;cinematic_=0;lastImpact_=-100;currentLapTime_=lastLapTime_=bestLapTime_=0.;validLap_=true;}
 bool Game::garage() const noexcept {auto f=sim_->fase();return f==cometa::Fase::Diagnostico || f==cometa::Fase::Reparando || f==cometa::Fase::Validacao || f==cometa::Fase::Abandono;}
 double Game::repairFraction() const noexcept {const auto& r=sim_->reparo();return r.tempoTotalS>0?clamp(r.tempoDecorridoS/r.tempoTotalS,0,1):0;}
 double Game::trackOffset() const noexcept {double a=std::atan2(vehicle_.y,vehicle_.x);return std::hypot(vehicle_.x,vehicle_.y)-targetRadius(a);}
 double Game::lapProgress() const noexcept {return (std::atan2(vehicle_.y,vehicle_.x)+2*PI)/(2*PI)-std::floor((std::atan2(vehicle_.y,vehicle_.x)+2*PI)/(2*PI));}
-void Game::requestDamage(const std::string& part, double severity){if(sim_->fase()!=cometa::Fase::Corrida)return; sim_->provocarImpacto(part,clamp(severity,1.,20.),part=="chassi"?.013:.036);cinematic_=2.6;lastImpact_=worldTime_;}
+void Game::requestDamage(const std::string& part, double severity){if(sim_->fase()!=cometa::Fase::Corrida)return; validLap_=false; sim_->provocarImpacto(part,clamp(severity,1.,20.),part=="chassi"?.013:.036);cinematic_=2.6;lastImpact_=worldTime_;}
 void Game::update(const Input& in, double dt){
     if(!(dt>0&&dt<=.2) || !std::isfinite(dt))throw std::invalid_argument("passo invalido");
     const auto before=sim_->fase();
@@ -54,7 +54,14 @@ void Game::update(const Input& in, double dt){
         double a=std::atan2(vehicle_.y,vehicle_.x);
         double delta=normAngle(a-lastPolarAngle_);
         orbitTurns_+=delta;lastPolarAngle_=a;
-        vehicle_.lap=std::max(0,(int)std::floor(orbitTurns_/(2*PI)));
+        currentLapTime_+=dt;
+        if(std::abs(trackOffset())>.42)validLap_=false;
+        const int completed=std::max(vehicle_.lap,(int)std::floor(orbitTurns_/(2*PI)));
+        if(completed>vehicle_.lap){
+            lastLapTime_=validLap_?currentLapTime_:0.;
+            if(lastLapTime_>0. && (bestLapTime_==0. || lastLapTime_<bestLapTime_))bestLapTime_=lastLapTime_;
+            vehicle_.lap=completed;currentLapTime_=0.;validLap_=true;
+        }
         // A rigidez da pista gera impactos controlados ao atravessar a defensa.
         double offset=trackOffset();
         if(std::abs(offset)>.63 && worldTime_-lastImpact_>2.2 && speed>14.){
@@ -98,7 +105,7 @@ void Game::update(const Input& in, double dt){
     sim_->avancar(dt);
     if(before!=cometa::Fase::Corrida && sim_->fase()==cometa::Fase::Corrida){
        // apos conclusao do box, reposiciona na entrada da pista evitando salto de colisao
-       double a=0.;vehicle_.x=targetRadius(a);vehicle_.y=0.;vehicle_.angle=PI/2;vehicle_.speed=0;lastPolarAngle_=a;orbitTurns_=vehicle_.lap*2*PI;lastImpact_=worldTime_;
+       double a=0.;vehicle_.x=targetRadius(a);vehicle_.y=0.;vehicle_.angle=PI/2;vehicle_.speed=0;lastPolarAngle_=a;orbitTurns_=vehicle_.lap*2*PI;lastImpact_=worldTime_;currentLapTime_=0.;validLap_=true;
     }
 }
 std::string Game::status() const {switch(sim_->fase()) {case cometa::Fase::Corrida:return "PILOTANDO";case cometa::Fase::Alerta:return "IMPACTO DETECTADO";case cometa::Fase::RetornoBox:return "REBOQUE AO BOX";case cometa::Fase::Diagnostico:return "ESCANEANDO ESTRUTURA";case cometa::Fase::Reparando:return "REGENERACAO EM CURSO";case cometa::Fase::Validacao:return "VALIDANDO SEGURANCA";case cometa::Fase::Abandono:return "DANO IRREVERSIVEL";}return "?";}

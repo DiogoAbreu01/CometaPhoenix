@@ -203,10 +203,12 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
   ui.text("VELOCIDADE",44*S,164*S,2*S,MUTED);ui.text(fmt(veh.speed),44*S,187*S,5.4f*S,WHITE);ui.text("KM/H",165*S,207*S,2*S,CYAN);
   ui.text("ADERENCIA",44*S,260*S,1.9f*S,MUTED);
   ui.rect(153*S,259*S,117*S,8*S,{.12f,.22f,.24f,1});ui.rect(153*S,259*S,117*S*(float)phoenix::climate(game.weather()).grip,8*S,CYAN);
-  ui.rect((float)w-267*S,103*S,242*S,138*S,{.013f,.031f,.046f,.88f});
+  ui.rect((float)w-267*S,103*S,242*S,193*S,{.013f,.031f,.046f,.88f});
   ui.text("CONDICAO",(float)w-246*S,118*S,2.4f*S,MUTED);
   ui.text(phoenix::weatherName(game.weather()),(float)w-245*S,155*S,2.9f*S,CYAN);
   ui.text("VOLTA "+intStr(veh.lap+1),(float)w-245*S,201*S,2.2f*S,WHITE);
+  ui.text("TEMPO "+fmt(game.currentLapTime(),2)+" S",(float)w-245*S,229*S,1.7f*S,game.validLap()?WHITE:BAD);
+  ui.text("MELHOR "+(game.bestLapTime()>0.?fmt(game.bestLapTime(),2)+" S":std::string("--")),(float)w-245*S,259*S,1.7f*S,CYAN);
   // Conta-giros circular estilo HUD de corridas; um unico VBO por frame.
   float cx=(float)w-132*S,cy=(float)h-187*S;
   ui.ring(cx,cy,66*S,4*S,2.45f,4.58f,{.14f,.25f,.28f,.85f});
@@ -214,7 +216,7 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
   ui.text(fmt(veh.speed,0),cx-48*S,cy-12*S,5.0f*S,WHITE);
   ui.text("KM/H",cx-28*S,cy+30*S,1.6f*S,MUTED);
   // Mini mapa top-down com o kart ativo.
-  const float mx=(float)w-107*S,my=308*S;
+  const float mx=(float)w-107*S,my=365*S;
   ui.rect(mx-76*S,my-59*S,152*S,134*S,{.012f,.033f,.041f,.83f});
   for(int i=0;i<46;i++){
     float a=6.2831853f*i/46.,b=6.2831853f*(i+1)/46.;
