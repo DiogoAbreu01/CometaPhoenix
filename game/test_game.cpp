@@ -48,6 +48,14 @@ int main(){using namespace phoenix;
  Game crash;crash.requestCollision(90,1.,true,true);
  for(int i=0;i<2000;++i)crash.update({},.02);
  CHECK(crash.abandoned());CHECK(crash.simulator().componente("chassi").integridade<.55);
+ // Race objectives count valid laps and stop at the selected finish.
+ Game finish;finish.setTargetLaps(1);finish.setAutopilot(true);
+ for(int i=0;i<10000&&!finish.finished();++i)finish.update({},.02);
+ CHECK(finish.finished());CHECK(finish.validCompletedLaps()==1);CHECK(finish.vehicle().speed==0.);
+ const double finishTime=finish.worldTime();finish.update({},.02);CHECK(finish.worldTime()==finishTime);
+ finish.restart();CHECK(!finish.finished());CHECK(finish.validCompletedLaps()==0);
+ finish.setTargetLaps(0);for(int i=0;i<3000;++i)finish.update({},.02);
+ CHECK(!finish.finished());CHECK(finish.validCompletedLaps()>=1);
  Game far;far.setAutopilot(true);
  for(int i=0;i<30000 && far.lapProgress()<.4;++i)far.update({},.02);
  CHECK(far.lapProgress()>=.4);far.setAutopilot(false);far.requestDamage("carenagem",12);

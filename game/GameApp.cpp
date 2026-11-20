@@ -206,7 +206,7 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
   ui.rect((float)w-267*S,103*S,242*S,193*S,{.013f,.031f,.046f,.88f});
   ui.text("CONDICAO",(float)w-246*S,118*S,2.4f*S,MUTED);
   ui.text(phoenix::weatherName(game.weather()),(float)w-245*S,155*S,2.9f*S,CYAN);
-  ui.text("VOLTA "+intStr(veh.lap+1),(float)w-245*S,201*S,2.2f*S,WHITE);
+  ui.text("VOLTA "+intStr(game.finished()?game.validCompletedLaps():game.validCompletedLaps()+1)+(game.targetLaps()>0?"/"+intStr(game.targetLaps()):" LIVRE"),(float)w-245*S,201*S,2.2f*S,WHITE);
   ui.text("TEMPO "+fmt(game.currentLapTime(),2)+" S",(float)w-245*S,229*S,1.7f*S,game.validLap()?WHITE:BAD);
   ui.text("MELHOR "+(game.bestLapTime()>0.?fmt(game.bestLapTime(),2)+" S":std::string("--")),(float)w-245*S,259*S,1.7f*S,CYAN);
   // Conta-giros circular estilo HUD de corridas; um unico VBO por frame.
@@ -250,9 +250,10 @@ void drawHUD(UI & ui,const phoenix::Game &game,int w,int h,int quality,bool paus
  ui.text("WASD/SETAS DIRIGIR  |  1-5 CLIMA  |  X DANO  |  R REINICIA  |  P PAUSA  |  Q GFX  |  M MAPA  |  V SOM",28*S,(float)h-25*S,1.55f*S,MUTED);
  ui.text("FPS "+fmt(fps,0),std::max(0.f,(float)w-255*S),(float)h-52*S,1.7f*S,CYAN);
  ui.text("GFX "+intStr(quality),std::max(0.f,(float)w-116*S),(float)h-52*S,1.8f*S,WARN);
- if(paused){ui.rect(0,(float)h*.46f,(float)w,70*S,{.005f,.012f,.021f,.82f});ui.text("PAUSADO",(float)w*.38f,(float)h*.48f,4.8f*S,WHITE);}
+ if(game.finished()){ui.rect(0,(float)h*.39f,(float)w,126*S,{.008f,.05f,.046f,.94f});ui.text("CORRIDA CONCLUIDA",(float)w*.22f,(float)h*.41f,4.4f*S,CYAN);ui.text("TOTAL "+fmt(game.worldTime(),2)+" S  |  R REINICIAR",(float)w*.23f,(float)h*.49f,2.1f*S,WHITE);}
+ else if(paused){ui.rect(0,(float)h*.46f,(float)w,70*S,{.005f,.012f,.021f,.82f});ui.text("PAUSADO",(float)w*.38f,(float)h*.48f,4.8f*S,WHITE);}
 }
-void drawMenu(UI &ui,int w,int h,int quality,phoenix::Circuit circuit){
+void drawMenu(UI &ui,int w,int h,int quality,phoenix::Circuit circuit,int laps){
  const float S=std::max(.28f,std::min({1.4f,(float)w/1280.f,(float)h/720.f}));
  ui.rect(0,0,(float)w,15*S,{.012f,.08f,.09f,.82f});
  ui.rect(35*S,120*S,7*S,245*S,CYAN);
@@ -263,7 +264,7 @@ void drawMenu(UI &ui,int w,int h,int quality,phoenix::Circuit circuit){
  ui.text("[ ENTER ] INICIAR CORRIDA",81*S,399*S,2.9f*S,WHITE);
  ui.rect(65*S,466*S,445*S,118*S,{.008f,.02f,.03f,.84f});
  ui.text(std::string("[ T ] CIRCUITO: ")+phoenix::circuitName(circuit),84*S,482*S,2*S,WHITE);
- ui.text("1-5 CLIMAS     X/Z COLISAO",84*S,518*S,2*S,MUTED);
+ ui.text("[ L ] VOLTAS: "+(laps?intStr(laps):std::string("LIVRE")),84*S,518*S,2*S,MUTED);
  ui.text("F11 TELA CHEIA   M MAPA   V SOM",84*S,554*S,2*S,MUTED);
  ui.rect(0,(float)h-60*S,(float)w,60*S,{.009f,.023f,.034f,.89f});
  ui.text("COMETA PHOENIX / C++17 + OPENGL 3.3",34*S,(float)h-39*S,2*S,MUTED);
@@ -277,8 +278,8 @@ void screenshot(GLApi&gl,const std::string&name,int w,int h){
 } // namespace
 int main(int argc,char**argv){
  try{
-  std::string shot;int maxFrames=0;int initialWeather=0;bool autoPilot=false,forceGarage=false,forceMenu=false,benchmark=false;int initialCircuit=0;int initialQuality=2, initialWidth=1280, initialHeight=720;
-  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--screenshot"&&i+1<argc)shot=argv[++i];else if(a=="--frames"&&i+1<argc)maxFrames=std::stoi(argv[++i]);else if(a=="--autopilot")autoPilot=true;else if(a=="--garage")forceGarage=true;else if(a=="--menu")forceMenu=true;else if(a=="--benchmark")benchmark=true;else if(a=="--width"&&i+1<argc)initialWidth=std::clamp(std::stoi(argv[++i]),640,3840);else if(a=="--height"&&i+1<argc)initialHeight=std::clamp(std::stoi(argv[++i]),480,2160);else if(a=="--circuit"&&i+1<argc)initialCircuit=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--quality"&&i+1<argc)initialQuality=std::max(0,std::min(3,std::stoi(argv[++i])));else if(a=="--weather"&&i+1<argc){std::string v=argv[++i];initialWeather=v=="rain"?1:v=="snow"?2:v=="storm"?3:v=="fog"?4:0;}}
+  std::string shot;int maxFrames=0;int initialWeather=0;bool autoPilot=false,forceGarage=false,forceMenu=false,benchmark=false;int initialCircuit=0,initialLaps=3;int initialQuality=2, initialWidth=1280, initialHeight=720;
+  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--screenshot"&&i+1<argc)shot=argv[++i];else if(a=="--frames"&&i+1<argc)maxFrames=std::stoi(argv[++i]);else if(a=="--autopilot")autoPilot=true;else if(a=="--garage")forceGarage=true;else if(a=="--menu")forceMenu=true;else if(a=="--benchmark")benchmark=true;else if(a=="--width"&&i+1<argc)initialWidth=std::clamp(std::stoi(argv[++i]),640,3840);else if(a=="--height"&&i+1<argc)initialHeight=std::clamp(std::stoi(argv[++i]),480,2160);else if(a=="--laps"&&i+1<argc)initialLaps=std::clamp(std::stoi(argv[++i]),0,99);else if(a=="--circuit"&&i+1<argc)initialCircuit=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--quality"&&i+1<argc)initialQuality=std::max(0,std::min(3,std::stoi(argv[++i])));else if(a=="--weather"&&i+1<argc){std::string v=argv[++i];initialWeather=v=="rain"?1:v=="snow"?2:v=="storm"?3:v=="fog"?4:0;}}
   if(benchmark&&maxFrames==0)maxFrames=300;
   if(SDL_Init(0x00000020 | 0x00004000)!=0)throw std::runtime_error(SDL_GetError());
   SDL_GL_SetAttribute(17,3);SDL_GL_SetAttribute(18,3);SDL_GL_SetAttribute(21,1);SDL_GL_SetAttribute(5,1);SDL_GL_SetAttribute(6,24);
@@ -325,7 +326,7 @@ int main(int argc,char**argv){
   gl.GenVertexArrays(1,&fontVAO);gl.GenBuffers(1,&fontVBO);
   gl.BindVertexArray(uiVAO);gl.BindBuffer(ARRAY,uiVBO);gl.EnableVertexAttribArray(0);gl.VertexAttribPointer(0,2,FLOAT,0,6*sizeof(float),nullptr);gl.EnableVertexAttribArray(1);gl.VertexAttribPointer(1,4,FLOAT,0,6*sizeof(float),reinterpret_cast<const void*>(2*sizeof(float)));
   gl.BindVertexArray(fontVAO);gl.BindBuffer(ARRAY,fontVBO);gl.EnableVertexAttribArray(0);gl.VertexAttribPointer(0,2,FLOAT,0,8*sizeof(float),nullptr);gl.EnableVertexAttribArray(1);gl.VertexAttribPointer(1,2,FLOAT,0,8*sizeof(float),reinterpret_cast<const void*>(2*sizeof(float)));gl.EnableVertexAttribArray(2);gl.VertexAttribPointer(2,4,FLOAT,0,8*sizeof(float),reinterpret_cast<const void*>(4*sizeof(float)));
-  phoenix::Game game(42);game.setCircuit((phoenix::Circuit)initialCircuit);game.setWeather((phoenix::Weather)initialWeather);game.setAutopilot(autoPilot);
+  phoenix::Game game(42);game.setCircuit((phoenix::Circuit)initialCircuit);game.setTargetLaps(initialLaps);game.setWeather((phoenix::Weather)initialWeather);game.setAutopilot(autoPilot);
   if(forceGarage){game.requestDamage("carenagem",12);for(int i=0;i<150;i++)game.update({},.05);}
   bool running=true,paused=false,menuOpen=forceMenu||(maxFrames==0&&!forceGarage),fullscreen=false,mapOpen=false,muted=false;
   int quality=initialQuality,frame=0; UI ui;ui.verts.reserve(30000);ui.letterVerts.reserve(14000);int measuredRace=0,measuredGarage=0,measuredMenu=0;std::vector<double> frameMs;frameMs.reserve(maxFrames>0?maxFrames:0);double fps=60.,fpsWindow=0.;int fpsFrames=0;
@@ -343,6 +344,7 @@ int main(int argc,char**argv){
      if(k==13||k==1073741912){menuOpen=false;}
      if(k==1073741892){fullscreen=!fullscreen;SDL_SetWindowFullscreen(window,fullscreen?0x00001001u:0u);}
      if(k=='q')quality=(quality+1)%4;
+     if(k=='l' && menuOpen){const int n=game.targetLaps();game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
      if(k=='t' && menuOpen){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%3));smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
      if(!menuOpen){
        if(k=='m')mapOpen=!mapOpen;
@@ -407,7 +409,7 @@ int main(int argc,char**argv){
       gl.DrawArrays(TRIANGLES,0,3);
    }
    ui.verts.clear();ui.letterVerts.clear();
-   if(menuOpen)drawMenu(ui,w,h,quality,game.circuit()); else drawHUD(ui,game,w,h,quality,paused,fps);
+   if(menuOpen)drawMenu(ui,w,h,quality,game.circuit(),game.targetLaps()); else drawHUD(ui,game,w,h,quality,paused,fps);
    gl.Enable(BLEND);gl.BlendFunc(SRC_ALPHA,ONE_MINUS_SRC_ALPHA);
    gl.UseProgram(uiProg);set2(gl,uiProg,"res",(float)w,(float)h);
    gl.BindVertexArray(uiVAO);gl.BindBuffer(ARRAY,uiVBO);
@@ -423,7 +425,7 @@ int main(int argc,char**argv){
    if(benchmark)gl.Finish();
    SDL_GL_SwapWindow(window);
    if(benchmark&&frame>=warmup){frameMs.push_back(std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-frameStart).count());if(menuOpen)++measuredMenu;else if(shop)++measuredGarage;else ++measuredRace;}
-   engineAudio.update(game.vehicle().speed,!menuOpen&&!paused&&!shop&&!muted,in.throttle||game.autopilot());
+   engineAudio.update(game.vehicle().speed,!menuOpen&&!paused&&!shop&&!muted&&!game.finished(),in.throttle||game.autopilot());
    fpsWindow+=dt;fpsFrames++;if(fpsWindow>=.5){fps=fpsFrames/fpsWindow;fpsFrames=0;fpsWindow=0.;}
    frame++;if(maxFrames>0&&frame>=maxFrames)running=false;
    if(maxFrames==0)SDL_Delay(1);
@@ -432,6 +434,7 @@ int main(int argc,char**argv){
     double wall=std::chrono::duration<double>(std::chrono::steady_clock::now()-benchStart).count();
     std::cout<<"BENCHMARK frames="<<frame<<" seconds="<<wall<<" avg_fps="<<(wall>0?frame/wall:0.)
              <<" ms_per_frame="<<(frame>0?wall*1000./frame:0.)<<" quality="<<quality<<"\n";std::cout<<"SCENE_COUNTS race="<<measuredRace<<" garage="<<measuredGarage<<" menu="<<measuredMenu<<"\n";
+    std::cout<<"GAMEPLAY laps="<<game.validCompletedLaps()<<" traversed="<<game.vehicle().lap<<" elapsed="<<game.worldTime()<<" damage_events="<<game.simulator().danos().tamanho()<<" finished="<<game.finished()<<"\n";
     if(!frameMs.empty()){double mean=std::accumulate(frameMs.begin(),frameMs.end(),0.)/frameMs.size();std::cout<<"MEASURED frames="<<frameMs.size()<<" warmup="<<warmup<<" fps="<<1000./mean<<" mean_ms="<<mean<<"\n";std::sort(frameMs.begin(),frameMs.end());auto pct=[&](double p){return frameMs[(std::size_t)((frameMs.size()-1)*p)];};std::cout<<"FRAME_MS p50="<<pct(.5)<<" p95="<<pct(.95)<<" p99="<<pct(.99)<<" max="<<frameMs.back()<<"\n";}
   }
   scaledScene.reset(gl);gl.DeleteTextures(1,&fontTexture);gl.DeleteTextures(1,&menuTexture);gl.DeleteTextures(1,&spriteTexture);gl.DeleteTextures(1,&asphaltPhoto);gl.DeleteTextures(1,&asphaltNormal);engineAudio.stop();mesh.destroy(gl);

@@ -43,6 +43,10 @@ public:
     double lastLapTime() const noexcept { return lastLapTime_; }
     double bestLapTime() const noexcept { return bestLapTime_; }
     bool validLap() const noexcept { return validLap_; }
+    int validCompletedLaps() const noexcept { return validCompletedLaps_; }
+    int targetLaps() const noexcept { return targetLaps_; }
+    void setTargetLaps(int laps);
+    bool finished() const noexcept { return targetLaps_>0 && validCompletedLaps_>=targetLaps_; }
     void setAutopilot(bool b) noexcept { autopilot_=b; }
     bool autopilot() const noexcept { return autopilot_; }
     std::string status() const;
@@ -57,5 +61,6 @@ private:
     double lastPolarAngle_{0}, orbitTurns_{0};
     double currentLapTime_{}, lastLapTime_{}, bestLapTime_{};
     bool validLap_{true};
+    int validCompletedLaps_{0}, targetLaps_{3};
 };
 }
