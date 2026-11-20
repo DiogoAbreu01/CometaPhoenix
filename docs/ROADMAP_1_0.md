@@ -29,3 +29,9 @@ Estado verificado: Windows C++17, OpenGL 3.3 / SDL2, três circuitos, cinco cond
 - Rivais não colidem com o jogador. O resultado CSV é append-only e só contém corridas concluídas ou abandonadas.
 - Benchmarks sem VSync não medem experiência normal a 60 Hz; CTest e smoke não substituem jogo manual.
 - TITAN 35B IQ2_XXS passou smoke test anteriormente, mas sua estabilidade em consultas técnicas permanece limitada pela memória. A liberação do projeto não depende dele.
+
+## Atualizacao 0.9.15
+
+Implementados parcialmente: contato kart-kart, reacao de rival, manobra de ultrapassagem, 3 dificuldades, pneus e freios com temperatura e desgaste, historico, esquema de cores, teclado alternativo, volume e suporte inicial SDL gamepad.
+
+Ainda para homologacao: sessoes manuais de 30–60 minutos no Windows e Linux com audio e gamepad reais; IA ofensiva/defensiva avancada e colisao com atrito e geometria; artes 3D mais realistas e deformacao visual; benchmark termico e FPS estavel em hardware basico; feedback de jogadores e apresentacao final da disciplina.

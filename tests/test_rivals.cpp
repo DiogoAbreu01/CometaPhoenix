@@ -1,4 +1,5 @@
 #include "RivalAI.hpp"
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 
@@ -10,6 +11,11 @@ namespace {
 
 bool samePose(phoenix::GhostPose a, phoenix::GhostPose b) {
     return a.x == b.x && a.y == b.y && a.angle == b.angle;
+}
+
+phoenix::GhostPose trackPose(phoenix::Circuit circuit, double angle, double offset = 0.0) {
+    const double radius = phoenix::circuitRadius(circuit, angle) + offset;
+    return {radius * std::cos(angle), radius * std::sin(angle), 0.0};
 }
 
 } // namespace
@@ -104,5 +110,65 @@ int main() {
     REQUIRE(sunny.totalProgress() == 2.0 * turn && sunny.raceTime() < 152.0);
     sunny.update(1.0, 0);
     REQUIRE(sunny.totalProgress() > 2.0 * turn && !sunny.finished(0));
+
+    constexpr Circuit circuit = Circuit::Forest;
+    for (double passingSide : {-1.0, 1.0}) {
+        RivalAI passing, repeat, clear;
+        passing.reset(circuit, Weather::Sunny, 1.0, -0.06);
+        repeat = clear = passing;
+        const auto grid = passing.pose();
+        const auto player = trackPose(circuit, 0.015);
+        const auto other = trackPose(circuit, 0.015, -passingSide * 0.20);
+        clear.setCompetitors(player, other, false);
+        double previousOffset = 0.0;
+        double peakOffset = 0.0;
+        for (int frame = 0; frame < 120; ++frame) {
+            passing.setCompetitors(player, other);
+            repeat.setCompetitors(player, other);
+            passing.update(dt, 1);
+            repeat.update(dt, 1);
+            clear.update(dt, 1);
+            const auto pose = passing.pose();
+            REQUIRE(samePose(pose, repeat.pose()));
+            REQUIRE(passing.totalProgress() == repeat.totalProgress());
+            REQUIRE(passing.raceTime() == repeat.raceTime());
+            const double offset = std::hypot(pose.x, pose.y) -
+                circuitRadius(circuit, std::atan2(pose.y, pose.x));
+            REQUIRE(std::abs(offset) <= 0.23 + 1e-12);
+            REQUIRE(std::abs(offset - previousOffset) <= 0.8 * dt + 1e-12);
+            peakOffset = std::max(peakOffset, passingSide * offset);
+            previousOffset = offset;
+            if (frame == 5) {
+                REQUIRE(passing.totalProgress() < clear.totalProgress());
+            }
+        }
+        REQUIRE(peakOffset > 0.16);
+        REQUIRE(std::abs(previousOffset) < 1e-12);
+        REQUIRE(passing.totalProgress() > 0.075);
+        passing.update(90.0, 1);
+        REQUIRE(passing.finished(1) && samePose(passing.pose(), grid));
+    }
+
+    RivalAI easy, normal, hard;
+    REQUIRE(normal.difficulty() == RivalDifficulty::Normal);
+    easy.setDifficulty(RivalDifficulty::Easy);
+    hard.setDifficulty(RivalDifficulty::Hard);
+    for (auto* rival : {&easy, &normal, &hard}) {
+        rival->reset(circuit, Weather::Rain, 1.0, 0.0);
+        rival->update(90.0, 1);
+        REQUIRE(rival->finished(1));
+    }
+    REQUIRE(easy.difficulty() == RivalDifficulty::Easy);
+    REQUIRE(hard.difficulty() == RivalDifficulty::Hard);
+    REQUIRE(hard.raceTime() < normal.raceTime() && normal.raceTime() < easy.raceTime());
+    RivalAI collisionTest,collisionBaseline;
+    collisionTest.reset(Circuit::Forest,Weather::Sunny,1.0,0.0);
+    collisionBaseline=collisionTest;
+    collisionTest.applyContact(9.0);
+    collisionTest.update(.8,0);
+    collisionBaseline.update(.8,0);
+    REQUIRE(collisionTest.totalProgress()<collisionBaseline.totalProgress());
+    collisionTest.applyContact(std::numeric_limits<double>::quiet_NaN());
+    REQUIRE(std::isfinite(collisionTest.pose().x));
     std::cout << "RivalAI regression tests passed\n";
 }

@@ -36,6 +36,11 @@ int main(){
  CHECK(bool(std::getline(in,row1)));
  CHECK(bool(std::getline(in,row2)));
  CHECK(row1==row2);
+ const auto recent=recentRaceHistory(path,5);
+ CHECK(recent.size()==2);
+ CHECK(recent[0].completedLaps==1 && recent[0].position==result.position);
+ CHECK(recent[0].weather==Weather::Rain);
+ CHECK(recentRaceHistory(path,0).empty());
  CHECK(row1.find("PHOENIX_RACE_V1,0,1,1,1,2,")!=std::string::npos);
  CHECK(!bool(std::getline(in,trailing)));
  in.close();
@@ -48,6 +53,7 @@ int main(){
  CHECK(!appendRaceHistory(path,invalid));
  {std::ofstream corrupt(path,std::ios::trunc);corrupt<<"not our csv\n";}
  CHECK(!appendRaceHistory(path,result));
+ CHECK(recentRaceHistory(path).empty());
  std::filesystem::remove(path,ec);
  player.restart();player.requestDamage("chassi",18);
  for(int i=0;i<2000&&!player.abandoned();++i)player.update({},.02);

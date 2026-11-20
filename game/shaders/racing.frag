@@ -9,6 +9,7 @@ uniform vec2 u_ghostPos;
 uniform float u_ghostHeading;
 uniform float u_hasGhost;
 uniform float u_rivalCount;
+uniform float u_accessible;
 uniform vec2 u_rival0,u_rival1;
 uniform float u_rivalAngle0,u_rivalAngle1;
 uniform float u_zoom;
@@ -18,6 +19,7 @@ uniform float u_flash;
 uniform float u_integrity;
 uniform vec2 u_damagePoint;
 uniform float u_quality;
+uniform float u_racingAssist;
 uniform float u_cinematic;
 uniform float u_box;
 uniform float u_night;
@@ -170,6 +172,12 @@ vec3 baseCol(vec2 p,float d,float angle){
   float braking=smoothstep(.38,.82,abs(sin(3.*angle+.3)))*smoothstep(.03,.14,abs(d));
   float skid=pow(max(0.,sin(angle*71.+d*14.)),30.);
   col*=1.-braking*skid*.08*(1.-smoothstep(.32,.43,outer));
+  // Optional accessible racing guide: safe center-line cue with amber apex warnings.
+  if(u_racingAssist>.5 && outer<.42){
+    float line=1.-smoothstep(.012,.030,abs(d+.09));
+    float apex=smoothstep(.64,.88,abs(sin(3.*angle+.3)));
+    col=mix(col,mix(vec3(.02,.69,.57),vec3(.93,.56,.08),apex),line*.56);
+  }
   // Sombra direcional das muretas: reforco de profundidade visual.
   float castShadow=1.-smoothstep(.030,.10,abs(outer-.62));
   col*=1.-castShadow*.12;
@@ -178,6 +186,21 @@ vec3 baseCol(vec2 p,float d,float angle){
 float wheel(vec2 q,vec2 c){return sdBox(q-c,vec2(.053,.041));}
 // Kart em 2D: textura top-down derivada da malha 3D de 53 mil triangulos.
 // Uma unica amostra de textura substitui multiplos SDF de quadrados.
+vec3 tyreSpray(vec2 p,vec3 under){
+  if(u_quality<2.5 || u_speed<17.)return under;
+  vec2 delta=p-u_car;
+  if(dot(delta,delta)>.52)return under;
+  vec2 forward=vec2(cos(u_heading),sin(u_heading));
+  float rear=-dot(delta,forward);
+  float side=abs(dot(delta,vec2(-forward.y,forward.x)));
+  float band=smoothstep(.10,.20,rear)*(1.-smoothstep(.43,.67,rear))*
+             (1.-smoothstep(.05,.23,side));
+  if(band<.02)return under;
+  float wet=(u_weather>.5&&u_weather<3.5)?1.:.32;
+  float flakes=noise(p*68.-forward*u_time*13.);
+  vec3 mist=u_weather>1.5&&u_weather<2.5?vec3(.67,.75,.84):vec3(.34,.43,.44);
+  return mix(under,mist,band*(.12+.18*flakes)*wet);
+}
 vec3 kart(vec2 p,vec3 under,float d){
  vec2 delta=p-u_car;
  if(dot(delta,delta)>.24)return under;
@@ -243,9 +266,23 @@ void main(){
   float angle=atan(world.y,world.x);
   float d=length(world)-radius(angle);
   vec3 col=baseCol(world,d,angle);
-  if(u_rivalCount>.5)col=racingRival(world,col,u_rival0,u_rivalAngle0,vec3(.93,.11,.10));
+  if(u_rivalCount>.5)col=racingRival(world,col,u_rival0,u_rivalAngle0,mix(vec3(.93,.11,.10),vec3(.06,.34,.93),u_accessible));
   if(u_rivalCount>1.5)col=racingRival(world,col,u_rival1,u_rivalAngle1,vec3(.99,.68,.07));
   col=replayGhost(world,col);
+  // Spray de pneu limitado a regiao atras do kart (chuva e tempestade).
+  if(u_quality>1.5 && u_speed>10. &&
+     ((u_weather>.5 && u_weather<1.5) || (u_weather>2.5 && u_weather<3.5))){
+     vec2 delta=world-u_car;
+     if(dot(delta,delta)<.8){
+        vec2 back=rot(-u_heading)*delta;
+        float trail=smoothstep(.1,.19,-back.x)*(1.-smoothstep(.4,.82,-back.x));
+        float width=1.-smoothstep(.05,.27,abs(back.y));
+        float particulate=noise(world*83.+vec2(u_time*4.,-u_time*3.));
+        float spray=trail*width*(.1+.25*particulate)*(u_speed/100.);
+        col=mix(col,vec3(.56,.7,.76),clamp(spray,0.,.25));
+     }
+  }
+  col=tyreSpray(world,col);
   col=kart(world,col,d);
   // Luz cinematografica variavel, vinheta, haze e reflexo de lente.
   float cloud=noise(world*.6+vec2(u_time*.014,-u_time*.009));

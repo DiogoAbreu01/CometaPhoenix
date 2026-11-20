@@ -70,3 +70,13 @@ Codex BlueLab tarefa 11 criou RivalAI.hpp e testes determinísticos de distânci
 - CTest Windows Release: 12/12, incluindo simulador de adversários e teste de escrita/arquivo corrompido. Teste end-to-end via executável real, com áudio: 3600 quadros sem VSync em 720p; foram gravados race_history.csv (164 B) e record_c0_w1.phx (~186 kB) em pasta de QA. Resultado 1 volta válida em 41,892 s, 3ª posição com dois rivais, 0 danos.
 - Smoke da chegada em RX580 Full HD Ultra, 3600 quadros (3570 medidos), chuva, dois rivais: 420,374 FPS, p95 2,5724 ms, p99 2,6292 ms. Teste acelerado sem VSync; não é partida longa/manual. Captura real docs/screenshots/0914-finish.jpg.
 - Documento ROADMAP_1_0.md lista requisitos finais e prioridades futuras. Linux e Windows CI desta versão ainda precisam ser confirmados após o push. IC permaneceu intocada.
+
+## 0.9.15 — melhorias de competicao, fisica e UX
+
+- Codex/BlueLab tarefa 12: trafego, curvas por grip, ultrapassagem com deslocamento lateral de ate 0,23 unidade e dificuldade facil/normal/dificil.
+- KartCollision: aproximacao de colisoes disco/disco e eventos de dano do jogador; rivais perdem velocidade na batida. Testes deterministas.
+- TireDynamics: calor de pneus e freios, desgaste, fading de frenagem, grip e integridade de componentes. Piloto automatico ajustado para neve, sem regressao de trajetoria.
+- Teclas de controle, volume ajustavel, gamepad SDL2, esquema de cor alternativo, HUD de temperatura/desgaste, historico de resultados e spray grafico local.
+- Windows 15/15 CTest. Teste de estresse C++17: 30 minutos simulados em cada pista sem NaNs. Nao substitui sessao humana real nem benchmarking termico.
+- RX580, 1080p Ultra, 360 quadros, captura: corrida chuva com rivais 313,574 FPS, menu 310,714, oficina 522,282 (medias medidas). Capturas reais em docs/screenshots/0915-*.jpg.
+- Limitacoes: IA e contato simplificados, hardware gamepad nao testado, nenhuma prova de estabilidade termica longa, qualidade grafica ainda nao fotorrealista. Linux/Windows CI desta revisao pendente.

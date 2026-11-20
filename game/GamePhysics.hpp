@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include "cometa/Simulation.hpp"
+#include "TireDynamics.hpp"
 
 namespace phoenix {
 enum class Circuit { Forest, Alpine, Coast };
@@ -18,6 +19,11 @@ ImpactAssessment assessImpact(double speedKmh,double incidence,bool left,bool fr
 struct Input { bool throttle{}, brake{}, left{}, right{}, reset{}; };
 struct Vehicle { double x{1.92}, y{0}, angle{1.5707963267948966}, speed{}, lateral{}; int lap{}; };
 struct GhostPose {double x{},y{},angle{};};
+struct KartContactEvent {bool overlap{},damaged{};double closingSpeedMs{};bool impulseApplied{};};
+struct HandlingState {
+    double tireTemperatureC{80.}, brakeTemperatureC{90.};
+    double tireWear{}, effectiveGrip{1.}, brakeEffectiveness{1.};
+};
 struct Climate { double grip{}, visibility{}, precipitation{}, temperature{}, wind{}, drag{}; };
 Climate climate(Weather w) noexcept;
 struct Particle { float x{},y{},life{},size{}; };
@@ -31,6 +37,8 @@ public:
     void restart(std::uint32_t seed = 42);
     void requestDamage(const std::string& component="carenagem", double severity=10);
     void requestCollision(double speedKmh,double incidence,bool left,bool front);
+    KartContactEvent collideRival(const GhostPose& rival,const GhostPose& previousRival,double dt);
+    const HandlingState& handling() const noexcept { return handling_; }
     Weather weather() const noexcept { return weather_; }
     const Vehicle& vehicle() const noexcept { return vehicle_; }
     const cometa::Simulacao& simulator() const noexcept { return *sim_; }
@@ -66,10 +74,12 @@ private:
     double ghostSampleInterval_{};
     std::unique_ptr<cometa::Simulacao> sim_;
     Vehicle vehicle_{};
+    HandlingState handling_{};
+    TireDynamics tireModel_{};
     Weather weather_{Weather::Sunny};
     Circuit circuit_{Circuit::Forest};
     std::uint32_t seed_{42};
-    double worldTime_{0}, cinematic_{0}, lastImpact_{-100};
+    double worldTime_{0}, cinematic_{0}, lastImpact_{-100}, lastKartContact_{-100};
     bool autopilot_{false};
     double lastPolarAngle_{0}, orbitTurns_{0};
     double currentLapTime_{}, lastLapTime_{}, bestLapTime_{};

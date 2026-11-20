@@ -1,4 +1,5 @@
 #include "GamePhysics.hpp"
+#include "KartCollision.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -40,8 +41,10 @@ void Game::setTargetLaps(int laps){targetLaps_=std::clamp(laps,0,99);restart(see
 void Game::restart(std::uint32_t seed){
     seed_=seed;sim_=std::make_unique<cometa::Simulacao>("normal", seed);vehicle_={};
     vehicle_.x=circuitRadius(circuit_,0);vehicle_.y=0;vehicle_.angle=PI/2;
-    lastPolarAngle_=0;orbitTurns_=0;worldTime_=0;cinematic_=0;lastImpact_=-100;
+    lastPolarAngle_=0;orbitTurns_=0;worldTime_=0;cinematic_=0;lastImpact_=-100;lastKartContact_=-100;
+    handling_={};
     currentLapTime_=lastLapTime_=bestLapTime_=0.;validLap_=true;validCompletedLaps_=0;
+    tireModel_.reset(climate(weather_).temperature);
     ghostLap_.reserve(maxGhostSamples_);
     bestGhostLap_.reserve(maxGhostSamples_);
     bestGhostLap_.clear();
@@ -164,6 +167,36 @@ void Game::requestCollision(double speedKmh,double incidence,bool left,bool fron
     validLap_=false;sim_->provocarImpacto(hit.component,hit.deltaVelocityMs,hit.durationS,hit.kind);
     cinematic_=2.6;lastImpact_=worldTime_;
 }
+KartContactEvent Game::collideRival(const GhostPose& rival,const GhostPose& previousRival,double dt){
+    if(finished() || sim_->fase()!=cometa::Fase::Corrida)return {};
+    const auto contact=detectKartContact(vehicle_,rival,previousRival,dt);
+    if(!contact.overlap)return {};
+    // Shift out of overlap, without mutating the opponent's deterministic racing AI.
+    vehicle_.x+=contact.nx*contact.penetrationUnits;
+    vehicle_.y+=contact.ny*contact.penetrationUnits;
+    const double angle=std::atan2(vehicle_.y,vehicle_.x);
+    const double rr=circuitRadius(circuit_,angle);
+    const double off=std::hypot(vehicle_.x,vehicle_.y)-rr;
+    if(std::abs(off)>.50){
+        vehicle_.x=(rr+std::copysign(.50,off))*std::cos(angle);
+        vehicle_.y=(rr+std::copysign(.50,off))*std::sin(angle);
+    }
+    const double incoming=contact.closingSpeedMs;
+    if(worldTime_-lastKartContact_<.55)return {true,false,incoming};
+    lastKartContact_=worldTime_;
+    vehicle_.speed*=std::clamp(1.-.07*incoming,.26,1.);
+    const double side=std::cos(vehicle_.angle)*contact.ny-std::sin(vehicle_.angle)*contact.nx;
+    vehicle_.angle=normAngle(vehicle_.angle+std::clamp(side*incoming*.014,-.28,.28));
+    vehicle_.lateral+=side*incoming/9.80665;
+    if(incoming>2.4)validLap_=false;
+    if(incoming>=6.0 && worldTime_-lastImpact_>2.2) {
+        const bool left=side>0.;
+        const bool front=std::cos(vehicle_.angle)*(-contact.nx)+std::sin(vehicle_.angle)*(-contact.ny)>.25;
+        requestCollision(std::clamp(incoming*3.6,1.,102.),.95,left,front);
+        return {true,true,incoming,true};
+    }
+    return {true,false,incoming,true};
+}
 void Game::update(const Input& in, double dt){
     if(!(dt>0&&dt<=.2) || !std::isfinite(dt))throw std::invalid_argument("passo invalido");
     if(finished())return;
@@ -173,16 +206,35 @@ void Game::update(const Input& in, double dt){
         Climate cl=climate(weather_);
         double speed=vehicle_.speed;
         bool offroad=std::abs(trackOffset())>.42;
-        double grip=cl.grip*(offroad?.52:1.)*(1.-std::min(.45,sim_->componente("pneu_de").desgaste*.45));
-        double accel= (in.throttle ? 22.0:0.0) - (in.brake? 35.0:0.0) - (5.0 + speed*.003*cl.drag);
+        const double tireHealth=(sim_->componente("pneu_de").integridade+
+            sim_->componente("pneu_dd").integridade+
+            sim_->componente("pneu_te").integridade+
+            sim_->componente("pneu_td").integridade)*.25;
+        tireModel_.update(dt,speed,vehicle_.lateral,in.brake?1.:0.,
+                          cl.temperature,cl.precipitation,offroad?1.:0.);
+        const auto tire=tireModel_.state();
+        handling_.tireTemperatureC=tire.temperatureC;
+        handling_.brakeTemperatureC=tire.brakeTempC;
+        handling_.tireWear=tire.wear;
+        const double healthGrip=std::clamp(.57+.43*tireHealth,.45,1.);
+        handling_.effectiveGrip=std::clamp(tireModel_.grip()*(.45+.55*cl.grip)*
+                                          healthGrip,.16,1.05);
+        handling_.brakeEffectiveness=std::clamp(sim_->componente("freio").integridade*
+                                              tireModel_.brakingEfficiency(),.35,1.);
+        double grip=handling_.effectiveGrip;
+        const double engineEfficiency=std::clamp(sim_->componente("motor").integridade,.40,1.);
+        double accel= (in.throttle ? 22.0*engineEfficiency:0.0) -
+            (in.brake? 35.0*handling_.brakeEffectiveness:0.0) -
+            (5.0 + speed*.003*cl.drag);
         if(autopilot_){
             const double a=std::atan2(vehicle_.y,vehicle_.x);
             const double r=circuitRadius(circuit_,a), dr=derivative(circuit_,a);
             const double ddr=secondDerivative(circuit_,a);
             const double k=std::abs(r*r+2*dr*dr-r*ddr)/std::pow(r*r+dr*dr,1.5)/15.;
             const double limit=std::sqrt(4.5*grip/std::max(.008,k))*3.6;
-            const double target=std::clamp(limit,18.,68.*std::sqrt(grip));
-            accel=std::clamp((target-speed)*2.3,-35.,22.);
+            const double caution=cl.grip<.5?.78:cl.grip<.6?.89:1.;
+            const double target=std::clamp(limit*caution,14.,68.*std::sqrt(grip)*caution);
+            accel=std::clamp((target-speed)*2.3,-35.*handling_.brakeEffectiveness,22.*engineEfficiency);
         }
         speed=clamp(speed+accel*dt,0.,102.);
         double steer=((in.left?1.:0.)-(in.right?1.:0.));

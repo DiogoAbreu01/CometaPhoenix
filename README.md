@@ -1,4 +1,4 @@
-# Cometa Phoenix — 0.9.14 (candidato nativo)
+# Cometa Phoenix — 0.9.15 (candidato nativo)
 
 Projeto ECOP13A / LAB12–LAB14. Corrida 2D com três circuitos e cinco condições climáticas, oficina 3D com diagnóstico, regeneração e abandono. Aplicativo e motor C++17 com SDL2/OpenGL 3.3 e shaders GLSL. Não depende de navegador nem JavaScript. Modelo físico didático, não certificado.
 
@@ -62,3 +62,12 @@ Ao terminar uma corrida ou abandonar por dano crítico, o jogo acrescenta uma li
 Para realizar uma partida de QA sem alterar seus dados: cometa_game --frames 3600 --no-vsync --data-dir caminho_de_teste --autopilot --rivals 2 --circuit 0 --weather rain --laps 1. O teste deve gerar race_history.csv e record_c0_w1.phx no diretório escolhido. Sem --no-vsync, o jogo mantém o limite do monitor. Benchmarks não gravam arquivos pessoais.
 
 [Captura real da chegada com dois rivais](docs/screenshots/0914-finish.jpg). [Roadmap e pendências técnicas](docs/ROADMAP_1_0.md).
+
+## 0.9.15 — competicao, controle e telemetria
+
+- IA de rivais com tres dificuldades (linha de comando --difficulty easy|normal|hard), adaptacao de curvas e deslocamento de faixa para ultrapassagem. D no menu altera dificuldade e K numero de adversarios.
+- Contato kart-kart: hitbox circular simplificada, reacao a impacto, perda de velocidade, penalidade e eventual dano/reboque. Reacao na velocidade dos rivais e cooldown de contato; nao ha deformacao 3D.
+- Pneus e freios: temperatura, desgaste e resposta de aderencia/frenagem. Componentes danificados alteram performance. Modelo didatico e aproximado.
+- Menu: H apresenta as ultimas cinco corridas, B troca layout WASD/IJKL/setas, N muda as cores dos rivais, -/+ volume. Gamepad SDL2: direcao no stick esquerdo, gatilhos como aceleracao/freio, Start pausa. Dispositivo nao foi testado fisicamente.
+- Spray de pneu procedural em chuva/temporal. [Menu](docs/screenshots/0915-menu.jpg), [corrida](docs/screenshots/0915-race.jpg), [oficina](docs/screenshots/0915-garage.jpg).
+- Testes: ctest --test-dir build-win --output-on-failure. Opcional: cometa_race_stress_tests --minutes 30 (tempo de simulacao acelerado, nao teste termico/manual).

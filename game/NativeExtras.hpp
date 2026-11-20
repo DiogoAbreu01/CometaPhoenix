@@ -40,6 +40,7 @@ class EngineAudio {
  static_assert(std::atomic<std::uint32_t>::is_always_lock_free, "Audio controls must be lock-free");
 
  std::uint32_t device{};
+ std::atomic<float> masterVolume{1.f};
  unsigned gear{};
  std::atomic<std::uint32_t> controls{1200};
  std::array<float,tableSize> coastTable{},loadedTable{};
@@ -105,7 +106,7 @@ class EngineAudio {
    const float output=combined-self.previousInput+.998f*self.previousOutput;
    self.previousInput=combined;
    self.previousOutput=std::abs(output)<1e-12f?0.f:output;
-   const float clipped=std::clamp(output,-1.f,1.f);
+   const float clipped=std::clamp(output*self.masterVolume.load(std::memory_order_relaxed),-1.f,1.f);
    std::memcpy(stream+i*sizeof(float),&clipped,sizeof(float));
   }
   const int trailing=bytes%int(sizeof(float));
@@ -143,6 +144,8 @@ class EngineAudio {
                  std::memory_order_relaxed);
  }
 
+ void setVolume(float v) noexcept {if(std::isfinite(v))masterVolume.store(std::clamp(v,0.f,1.f),std::memory_order_relaxed);}
+ float volume() const noexcept {return masterVolume.load(std::memory_order_relaxed);}
  bool available() const noexcept {return device!=0;}
  void triggerEffect(ImpactKind kind,float intensity) noexcept {effects.trigger(kind,intensity);}
  void triggerImpact(float intensity) noexcept {effects.trigger(ImpactKind::Chassis,intensity);}

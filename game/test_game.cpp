@@ -110,6 +110,16 @@ int main(){using namespace phoenix;
  finish.restart();CHECK(!finish.finished());CHECK(finish.validCompletedLaps()==0);
  finish.setTargetLaps(0);for(int i=0;i<3000;++i)finish.update({},.02);
  CHECK(!finish.finished());CHECK(finish.validCompletedLaps()>=1);
+ // Dynamic tire and brake states: finite, bounded, stable with normal usage.
+ Game thermal;thermal.setAutopilot(true);
+ for(int i=0;i<3500;++i)thermal.update({},.02);
+ const auto state=thermal.handling();
+ CHECK(std::isfinite(state.tireTemperatureC) && state.tireTemperatureC>15. && state.tireTemperatureC<170.);
+ CHECK(std::isfinite(state.brakeTemperatureC) && state.brakeTemperatureC>0. && state.brakeTemperatureC<500.);
+ CHECK(state.tireWear>0. && state.tireWear<.2);
+ CHECK(state.effectiveGrip>.15 && state.effectiveGrip<=1.05);
+ thermal.restart();CHECK(thermal.handling().tireWear==0.);
+ // Contact impulse and cooldown are verified in tests/test_contacts.cpp.
  Game far;far.setAutopilot(true);
  for(int i=0;i<30000 && far.lapProgress()<.4;++i)far.update({},.02);
  CHECK(far.lapProgress()>=.4);far.setAutopilot(false);far.requestDamage("carenagem",12);

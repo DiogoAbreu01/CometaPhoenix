@@ -10,6 +10,8 @@
 #include <iomanip>
 #include <locale>
 #include <string>
+#include <vector>
+#include <sstream>
 #include <system_error>
 
 namespace phoenix {
@@ -82,5 +84,46 @@ inline bool appendRaceHistory(const std::filesystem::path& path,const RaceOutcom
         out.flush();
         return bool(out);
     } catch(...) {return false;}
+}
+// Read-only, bounded history viewer. Ignore incomplete or untrusted rows.
+inline std::vector<RaceOutcome> recentRaceHistory(const std::filesystem::path& path,std::size_t maximum=5) {
+    std::vector<RaceOutcome> rows;
+    if(maximum==0 || maximum>25)return rows;
+    std::error_code ec;
+    const auto bytes=std::filesystem::file_size(path,ec);
+    if(ec || bytes==0 || bytes>8*1024*1024)return rows;
+    std::ifstream in(path);
+    if(!in)return rows;
+    std::string line;
+    if(!std::getline(in,line) ||
+       line!="format,circuit,weather,completed_laps,target_laps,rivals,position,elapsed_s,best_lap_s,damage_events,status")
+        return rows;
+    while(std::getline(in,line)){
+        if(line.size()>256)continue;
+        std::array<std::string,11> f{};
+        std::istringstream input(line);
+        bool valid=true;
+        for(auto& cell:f)if(!std::getline(input,cell,',')){valid=false;break;}
+        if(!valid || std::getline(input,line,',') || f[0]!="PHOENIX_RACE_V1" ||
+           (f[10]!="CONCLUIDA" && f[10]!="ABANDONO"))continue;
+        try{
+            RaceOutcome r{};
+            const int c=std::stoi(f[1]),w=std::stoi(f[2]);
+            if(c<0 || c>2 || w<0 || w>4)continue;
+            r.circuit=static_cast<Circuit>(c);r.weather=static_cast<Weather>(w);
+            r.completedLaps=std::stoi(f[3]);r.targetLaps=std::stoi(f[4]);
+            r.rivals=std::stoi(f[5]);r.position=std::stoi(f[6]);
+            r.elapsedSeconds=std::stod(f[7]);r.bestLapSeconds=std::stod(f[8]);
+            r.damageEvents=static_cast<std::size_t>(std::stoul(f[9]));
+            r.abandoned=f[10]=="ABANDONO";
+            if(r.completedLaps<0||r.targetLaps<0||r.targetLaps>99||
+               r.rivals<0||r.rivals>2||r.position<1||r.position>r.rivals+1||
+               !std::isfinite(r.elapsedSeconds)||r.elapsedSeconds<0.||
+               !std::isfinite(r.bestLapSeconds)||r.bestLapSeconds<0.)continue;
+            rows.push_back(r);
+            if(rows.size()>maximum)rows.erase(rows.begin());
+        }catch(...){continue;}
+    }
+    return rows;
 }
 } // namespace phoenix
