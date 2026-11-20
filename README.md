@@ -1,4 +1,4 @@
-# Cometa Phoenix — 0.9.9 (candidato nativo)
+# Cometa Phoenix — 0.9.10 (candidato nativo)
 
 Projeto ECOP13A / LAB12–LAB14. Corrida 2D com três circuitos e cinco condições climáticas, oficina 3D com diagnóstico, regeneração e abandono. Aplicativo e motor C++17 com SDL2/OpenGL 3.3 e shaders GLSL. Não depende de navegador nem JavaScript. Modelo físico didático, não certificado.
 
@@ -32,3 +32,9 @@ Enunciado Projeto Cometa Livre (UNIFEI), laboratórios originais, documentação
 ## MK-III: capturas reais
 
 [Oficina 3D](docs/screenshots/099-garage-final.jpg) | [Corrida no Litoral](docs/screenshots/099-race.jpg). Modelo com 92.924 triangulos; geradores C++17 em tools/. A geometria original permanece no historico do Git.
+
+## Audio nativo 0.9.10
+O motor usa síntese procedural original em C++17 (não é uma amostra Ferrari). Além da aceleração e troca de marcha, cada tipo de colisão, o processo de reparação e o fim da corrida têm efeitos diferentes. A tecla V controla o som. Consulte `tests/test_engine_audio.cpp`, `tests/test_impact_audio.cpp` e `game/ImpactAudio.hpp`.
+
+## Capturas v0.9.10 (RX 580, renderizacao real)
+[Oficina com piso de concreto fotografado](docs/screenshots/0910-garage.jpg) | [Corrida Litoral](docs/screenshots/0910-race.jpg). As imagens nao demonstram que o audio foi ouvido ou que a corrida foi jogada manualmente.

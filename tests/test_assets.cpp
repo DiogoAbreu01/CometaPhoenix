@@ -24,6 +24,8 @@ int main(int argc,char** argv){
  std::size_t opaque=0,transparent=0;for(std::size_t k=3;k<pixels.size();k+=4){opaque+=pixels[k]>0;transparent+=pixels[k]==0;}REQUIRE(opaque>512*512/10&&transparent>512*512/10);
  REQUIRE(std::filesystem::file_size(dir/"asphalt_photo.rgba")==512*512*4);
  REQUIRE(std::filesystem::file_size(dir/"asphalt_normal.rgb")==512*512*3);
+ REQUIRE(std::filesystem::file_size(dir/"concrete_photo.rgba")==512*512*4);
+ REQUIRE(std::filesystem::file_size(dir/"concrete_normal.rgb")==512*512*3);
  REQUIRE(std::filesystem::file_size(dir/"phoenix_ui_atlas.r8")==768*360);
  REQUIRE(std::filesystem::file_size(dir/"phoenix_cinematic_menu.rgb")==1280*720*3);
  std::cout<<"Malha: "<<v<<" vertices; "<<i/3<<" triangulos. Assets corretos.\n";

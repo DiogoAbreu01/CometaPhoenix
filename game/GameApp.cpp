@@ -317,9 +317,14 @@ int main(int argc,char**argv){
   const auto asphaltNormals=readBinary(assetDir/"asphalt_normal.rgb",512*512*3);
   GLuint asphaltPhoto=loadTex(gl,512,512,RGBA,asphaltPixels.data(),true);
   GLuint asphaltNormal=loadTex(gl,512,512,RGB,asphaltNormals.data(),true);
+  const auto concretePixels=readBinary(assetDir/"concrete_photo.rgba",512*512*4);
+  const auto concreteNormals=readBinary(assetDir/"concrete_normal.rgb",512*512*3);
+  GLuint concretePhoto=loadTex(gl,512,512,RGBA,concretePixels.data(),true);
+  GLuint concreteNormal=loadTex(gl,512,512,RGB,concreteNormals.data(),true);
   KartMesh mesh(gl,assetDir/"kart.mesh");
   EngineAudio engineAudio;
-  if(!benchmark) engineAudio.start();
+  if(!benchmark){engineAudio.start();std::cout<<"AUDIO_DEVICE "<<(engineAudio.available()?"OPEN":"UNAVAILABLE")<<"\n";
+   if(!engineAudio.available())std::cerr<<"Audio indisponivel: "<<SDL_GetError()<<"\n";}
   RenderTarget scaledScene;
   GLuint quadVAO=0,uiVAO=0,uiVBO=0,fontVAO=0,fontVBO=0;
   gl.GenVertexArrays(1,&quadVAO);gl.GenVertexArrays(1,&uiVAO);gl.GenBuffers(1,&uiVBO);
@@ -328,6 +333,9 @@ int main(int argc,char**argv){
   gl.BindVertexArray(fontVAO);gl.BindBuffer(ARRAY,fontVBO);gl.EnableVertexAttribArray(0);gl.VertexAttribPointer(0,2,FLOAT,0,8*sizeof(float),nullptr);gl.EnableVertexAttribArray(1);gl.VertexAttribPointer(1,2,FLOAT,0,8*sizeof(float),reinterpret_cast<const void*>(2*sizeof(float)));gl.EnableVertexAttribArray(2);gl.VertexAttribPointer(2,4,FLOAT,0,8*sizeof(float),reinterpret_cast<const void*>(4*sizeof(float)));
   phoenix::Game game(42);game.setCircuit((phoenix::Circuit)initialCircuit);game.setTargetLaps(initialLaps);game.setWeather((phoenix::Weather)initialWeather);game.setAutopilot(autoPilot);
   if(forceGarage){game.requestDamage("carenagem",12);for(int i=0;i<150;i++)game.update({},.05);}
+  std::size_t knownDamageEvents=game.simulator().danos().tamanho();
+  auto knownPhase=game.simulator().fase();
+  bool knownFinished=game.finished();
   bool running=true,paused=false,menuOpen=forceMenu||(maxFrames==0&&!forceGarage),fullscreen=false,mapOpen=false,muted=false;
   int quality=initialQuality,frame=0; UI ui;ui.verts.reserve(30000);ui.letterVerts.reserve(14000);int measuredRace=0,measuredGarage=0,measuredMenu=0;std::vector<double> frameMs;frameMs.reserve(maxFrames>0?maxFrames:0);double fps=60.,fpsWindow=0.;int fpsFrames=0;
   float orbit=0,smx=(float)game.vehicle().x,smy=(float)game.vehicle().y;
@@ -381,6 +389,9 @@ int main(int argc,char**argv){
      if(shop){const auto &rank=game.simulator().componenteMaisCritico();float part=partId(rank.id);float harm=(float)(1.-rank.integridade);
        setf(gl,p,"u_orbit",orbit);setf(gl,p,"u_repair",(float)game.repairFraction());setf(gl,p,"u_damage",harm);setf(gl,p,"u_part",part);
        setf(gl,p,"u_phase",game.simulator().fase()==cometa::Fase::Reparando?2.f:game.simulator().fase()==cometa::Fase::Diagnostico?1.f:3.f);
+       gl.ActiveTexture(TEXTURE0+3);gl.BindTexture(TEXTURE_2D,concretePhoto);gl.Uniform1i(uniform(gl,p,"u_concretePhoto"),3);
+       gl.ActiveTexture(TEXTURE0+4);gl.BindTexture(TEXTURE_2D,concreteNormal);gl.Uniform1i(uniform(gl,p,"u_concreteNormal"),4);
+       gl.ActiveTexture(TEXTURE0);
      }else{
        const auto &ranking=game.simulator().componenteMaisCritico();set2(gl,p,"u_camera",mapOpen?0.f:smx,mapOpen?0.f:smy);set2(gl,p,"u_car",(float)game.vehicle().x,(float)game.vehicle().y);
        setf(gl,p,"u_heading",(float)game.vehicle().angle);setf(gl,p,"u_zoom",mapOpen?17.f:2.85f);
@@ -425,7 +436,22 @@ int main(int argc,char**argv){
    if(benchmark)gl.Finish();
    SDL_GL_SwapWindow(window);
    if(benchmark&&frame>=warmup){frameMs.push_back(std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-frameStart).count());if(menuOpen)++measuredMenu;else if(shop)++measuredGarage;else ++measuredRace;}
-   engineAudio.update(game.vehicle().speed,!menuOpen&&!paused&&!shop&&!muted&&!game.finished(),in.throttle||game.autopilot());
+   const auto damageEvents=game.simulator().danos().tamanho();
+   if(damageEvents>knownDamageEvents && !benchmark && !muted && !menuOpen){
+    const auto& affected=game.simulator().danos().itens().back().componente;
+    const float strength=affected=="chassi"?.98f:affected=="suspensao"?.80f:affected.find("pneu_")==0?.65f:.46f;
+    const auto& event=game.simulator().danos().itens().back();
+    engineAudio.triggerEffect(classifyImpact(event.componente,event.causa),strength);
+   }
+   knownDamageEvents=damageEvents;
+   auto currentPhase=game.simulator().fase();
+   if(!benchmark&&!muted&&!menuOpen&&!paused&&currentPhase!=knownPhase&&currentPhase==cometa::Fase::Reparando)
+      engineAudio.triggerEffect(ImpactKind::Repair,.8f);
+   knownPhase=currentPhase;
+   if(!benchmark&&!muted&&!menuOpen&&!paused&&game.finished()&&!knownFinished)
+      engineAudio.triggerEffect(ImpactKind::Finish,.85f);
+   knownFinished=game.finished();
+   engineAudio.update(game.vehicle().speed,!menuOpen&&!paused&&!shop&&!muted&&!game.finished(),in.throttle||game.autopilot(),!menuOpen&&!paused&&!muted&&!benchmark);
    fpsWindow+=dt;fpsFrames++;if(fpsWindow>=.5){fps=fpsFrames/fpsWindow;fpsFrames=0;fpsWindow=0.;}
    frame++;if(maxFrames>0&&frame>=maxFrames)running=false;
    if(maxFrames==0)SDL_Delay(1);
@@ -437,7 +463,7 @@ int main(int argc,char**argv){
     std::cout<<"GAMEPLAY laps="<<game.validCompletedLaps()<<" traversed="<<game.vehicle().lap<<" elapsed="<<game.worldTime()<<" damage_events="<<game.simulator().danos().tamanho()<<" finished="<<game.finished()<<"\n";
     if(!frameMs.empty()){double mean=std::accumulate(frameMs.begin(),frameMs.end(),0.)/frameMs.size();std::cout<<"MEASURED frames="<<frameMs.size()<<" warmup="<<warmup<<" fps="<<1000./mean<<" mean_ms="<<mean<<"\n";std::sort(frameMs.begin(),frameMs.end());auto pct=[&](double p){return frameMs[(std::size_t)((frameMs.size()-1)*p)];};std::cout<<"FRAME_MS p50="<<pct(.5)<<" p95="<<pct(.95)<<" p99="<<pct(.99)<<" max="<<frameMs.back()<<"\n";}
   }
-  scaledScene.reset(gl);gl.DeleteTextures(1,&fontTexture);gl.DeleteTextures(1,&menuTexture);gl.DeleteTextures(1,&spriteTexture);gl.DeleteTextures(1,&asphaltPhoto);gl.DeleteTextures(1,&asphaltNormal);engineAudio.stop();mesh.destroy(gl);
+  scaledScene.reset(gl);gl.DeleteTextures(1,&fontTexture);gl.DeleteTextures(1,&menuTexture);gl.DeleteTextures(1,&spriteTexture);gl.DeleteTextures(1,&asphaltPhoto);gl.DeleteTextures(1,&asphaltNormal);gl.DeleteTextures(1,&concretePhoto);gl.DeleteTextures(1,&concreteNormal);engineAudio.stop();mesh.destroy(gl);
   gl.DeleteBuffers(1,&uiVBO);gl.DeleteBuffers(1,&fontVBO);gl.DeleteVertexArrays(1,&quadVAO);gl.DeleteVertexArrays(1,&uiVAO);gl.DeleteVertexArrays(1,&fontVAO);
   gl.DeleteProgram(race);gl.DeleteProgram(garage);gl.DeleteProgram(uiProg);gl.DeleteProgram(fontProg);gl.DeleteProgram(menuProg);gl.DeleteProgram(meshProg);gl.DeleteProgram(upProg);
   SDL_GL_DeleteContext(ctx);SDL_DestroyWindow(window);SDL_Quit();

@@ -35,3 +35,13 @@ c++ -std=c++17 -O2 tools/bake_kart_sprite.cpp -o build/bake_kart_sprite
 ./build/bake_kart_sprite game/assets/kart.mesh build/kart_sprite.rgba
 cp build/kart_sprite.rgba game/assets/kart_sprite.rgba
 ```
+
+## 0.9.10 — áudio C++17 e piso da oficina (20/11/2026)
+- Síntese do motor revisada: harmônicos por wavetable, rotação em RPM, seis relações virtuais, corte breve na troca de marchas, desaceleração contínua, bloqueio de DC e limite de amplitude. Áudio procedural original; **não** é gravação de Ferrari.
+- Novo módulo `game/ImpactAudio.hpp`: seis efeitos sintetizados em tempo real sem alocações na callback SDL (raspagem, pneu, suspensão, chassi, regeneração e chegada). Caixa postal atômica evita concorrência entre lógica e áudio; mute interrompe a reprodução dos efeitos.
+- `tests/test_engine_audio.cpp` valida marcha, idle, aceleração, transições, saturação e mute. `tests/test_impact_audio.cpp` valida classificação, forma de onda, RMS, limites de amplitude, fim dos seis sons e segurança numérica.
+- Oficina: textura CC0 **Concrete Floor 02** da Poly Haven, com mapas difuso, roughness e normal em 512 px, dentro do pacote offline. Fonte e licença em `docs/ASSETS_CC0.md`.
+- Windows nativo com SDL2 e RX 580: 10/10 CTest, execução com áudio habilitado em corrida e garagem, shaders carregados sem falhas. Litoral Full HD Ultra chuva, 900 quadros, 870 medidos sem áudio/VSync: 534,40 FPS, p95 2,137 ms, p99 2,301 ms. Medição de garagem separada e Linux ainda em validação.
+- Trabalho anterior da fila BlueLab/Codex (motor e concreto) foi preservado, revisado e integrado com efeitos por peça. IC intocada. Captura e benchmark não validam semelhança acústica com motor real nem substituem audição humana.
+
+**Validação final da 0.9.10:** oficina isolada em 240 quadros (210 medidos), Full HD Ultra: 774,15 FPS; p95 1,738 ms, p99 1,776 ms. Litoral com chuva em 7200 quadros (7170 medidos), 120 s simulados: 532,63 FPS; p95 2,137 ms, p99 2,219 ms, máximo 2,822 ms, duas voltas, zero danos. Motor e efeito de garagem executaram também com dispositivo SDL de áudio habilitado (caminho do jogo sem `--benchmark`), sem erros reportados. Capturas reais: `docs/screenshots/0910-garage.jpg` e `0910-race.jpg`. A escuta subjetiva, compatibilidade Linux da revisão e partidas manuais prolongadas permanecem pendentes.

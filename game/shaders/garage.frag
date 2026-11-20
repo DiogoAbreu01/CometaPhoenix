@@ -2,6 +2,7 @@
 out vec4 FragColor;
 uniform vec2 u_resolution;
 uniform float u_time,u_orbit,u_damage,u_repair,u_phase,u_quality;
+uniform sampler2D u_concretePhoto,u_concreteNormal;
 float hash21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float grid(float v,float w){return 1.-smoothstep(0.,w,abs(fract(v)-.5));}
 void main(){
@@ -27,6 +28,18 @@ void main(){
   vec3 floorcol=mix(vec3(.036,.062,.069),vec3(.045,.073,.082),checker);
   float grain=hash21(floor(p.xy*120.))*.016;
   floorcol+=grain; floorcol-=seam*.020;
+  // CC0 scanned concrete: seamless repeat, mipmapped with explicit screen gradients.
+  float concreteRough=.78;
+  if(u_quality>1.0){
+    vec2 materialUV=p.xy*1.55;
+    vec2 gradX=dFdx(materialUV),gradY=dFdy(materialUV);
+    vec4 scan=textureGrad(u_concretePhoto,materialUV,gradX,gradY);
+    vec3 normalMap=textureGrad(u_concreteNormal,materialUV,gradX,gradY).xyz*2.-1.;
+    float micro=clamp(.76+.24*dot(normalize(normalMap),normalize(vec3(.4,-.3,.82))),.53,1.1);
+    vec3 concrete=pow(max(scan.rgb,vec3(.001)),vec3(2.2));
+    floorcol=mix(floorcol,concrete*.29*micro+vec3(.015,.02,.022),.70);
+    concreteRough=clamp(scan.a,.2,1.);
+  }
   float radius=length(p.xy);
   float platform=1.-smoothstep(1.36,1.45,radius);
   floorcol=mix(floorcol,vec3(.056,.105,.119),platform*.85);
@@ -42,7 +55,7 @@ void main(){
   floorcol*=max(.13,(1.-shadow*.40)*(1.-contact*.81)*(1.-chassis*.45));
   // Reflective shop floor, inexpensive non-RT wet reflection streaks.
   float streak=pow(max(0.,sin(p.y*20.+sin(p.x*7.)*.6)),14.);
-  floorcol+=vec3(.045,.11,.13)*streak*(u_quality>1.5?.35:.15)*exp(-radius*.15);
+  floorcol+=vec3(.045,.11,.13)*streak*(u_quality>1.5?(.11+.24*(1.-concreteRough)):.09)*exp(-radius*.15);
   float scanner=1.-smoothstep(.02,.09,abs(p.x-sin(u_time*.55)*.7));
   floorcol+=vec3(.015,.20,.22)*scanner*.19*step(1.5,u_phase);
   float haze=1.-exp(-t*.065);
