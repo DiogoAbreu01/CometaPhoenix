@@ -34,6 +34,20 @@ int main(){using namespace phoenix;
          CHECK(alternate.vehicle().lap==1);CHECK(!alternate.hasDamage());CHECK(alternate.bestLapTime()>0.);
      }
  }
+ // A mesma velocidade pode causar tipos de dano diferentes, conforme a incidência.
+ CHECK(std::string(assessImpact(60,.15,true,true).component)=="carenagem");
+ CHECK(std::string(assessImpact(60,.85,true,true).component)=="suspensao");
+ CHECK(std::string(assessImpact(60,.45,true,true).component)=="pneu_de");
+ CHECK(std::string(assessImpact(60,.45,false,false).component)=="pneu_td");
+ CHECK(std::string(assessImpact(90,1.,true,true).component)=="chassi");
+ Game tire;tire.requestCollision(65,.45,false,false);CHECK(tire.hasDamage());
+ CHECK(tire.simulator().danos().itens().back().componente=="pneu_td");
+ CHECK(tire.simulator().danos().itens().back().causa.find("IMPACTO NA RODA")!=std::string::npos);
+ for(int i=0;i<3000;++i)tire.update({},.02);
+ CHECK(tire.simulator().reparo().tipo==cometa::TipoReparo::SubstituicaoRobotica);
+ Game crash;crash.requestCollision(90,1.,true,true);
+ for(int i=0;i<2000;++i)crash.update({},.02);
+ CHECK(crash.abandoned());CHECK(crash.simulator().componente("chassi").integridade<.55);
  Game far;far.setAutopilot(true);
  for(int i=0;i<30000 && far.lapProgress()<.4;++i)far.update({},.02);
  CHECK(far.lapProgress()>=.4);far.setAutopilot(false);far.requestDamage("carenagem",12);

@@ -11,6 +11,8 @@ const char* circuitName(Circuit circuit) noexcept;
 double circuitRadius(Circuit circuit,double angle) noexcept;
 enum class Weather { Sunny, Rain, Snow, Storm, Fog };
 const char* weatherName(Weather weather) noexcept;
+struct ImpactAssessment { const char* component; const char* kind; double deltaVelocityMs; double durationS; };
+ImpactAssessment assessImpact(double speedKmh,double incidence,bool left,bool front) noexcept;
 struct Input { bool throttle{}, brake{}, left{}, right{}, reset{}; };
 struct Vehicle { double x{1.92}, y{0}, angle{1.5707963267948966}, speed{}, lateral{}; int lap{}; };
 struct Climate { double grip{}, visibility{}, precipitation{}, temperature{}, wind{}, drag{}; };
@@ -25,6 +27,7 @@ public:
     void setWeather(Weather w) noexcept { weather_ = w; }
     void restart(std::uint32_t seed = 42);
     void requestDamage(const std::string& component="carenagem", double severity=10);
+    void requestCollision(double speedKmh,double incidence,bool left,bool front);
     Weather weather() const noexcept { return weather_; }
     const Vehicle& vehicle() const noexcept { return vehicle_; }
     const cometa::Simulacao& simulator() const noexcept { return *sim_; }

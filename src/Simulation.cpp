@@ -197,7 +197,7 @@ void Simulacao::calcularCargas(double dt) {
     temperaturaC_ = limitar(temperaturaC_ + dt * ((velocidadeKmh_ > 45 ? .13 : -.07)), 30., 120.);
 }
 
-void Simulacao::provocarImpacto(const std::string& id, double deltaVelocidadeMs, double duracaoS) {
+void Simulacao::provocarImpacto(const std::string& id, double deltaVelocidadeMs, double duracaoS, const std::string& contexto) {
     if (deltaVelocidadeMs <= 0 || duracaoS <= 0 ||
         !std::isfinite(deltaVelocidadeMs) || !std::isfinite(duracaoS)) {
         throw std::invalid_argument("impulso exige velocidade e duracao positivas e finitas");
@@ -217,7 +217,7 @@ void Simulacao::provocarImpacto(const std::string& id, double deltaVelocidadeMs,
     const double perda = fratura
         ? limitar(.19 + .25 * std::max(0., razao - .6) + .08 * r, .20, .88)
         : limitar(.04 + .06 * razao, .02, .16);
-    registrarDano(p, fratura ? "colisao: fissura/fratura por tensao" : "colisao: dano superficial",
+    registrarDano(p, (contexto.empty()?std::string{}:contexto+" | ")+(fratura ? "colisao: fissura/fratura por tensao" : "colisao: dano superficial"),
                   perda, tensaoMPa, probabilidade, energiaJ);
 }
 

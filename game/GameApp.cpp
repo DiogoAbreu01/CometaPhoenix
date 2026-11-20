@@ -381,6 +381,11 @@ int main(int argc,char**argv){
        gl.ActiveTexture(TEXTURE0);gl.BindTexture(TEXTURE_2D,spriteTexture);gl.Uniform1i(uniform(gl,p,"u_kartSprite"),0);
        setf(gl,p,"u_weather",(float)(int)game.weather());setf(gl,p,"u_speed",(float)game.vehicle().speed);
        setf(gl,p,"u_flash",0.f);setf(gl,p,"u_integrity",(float)ranking.integridade);
+       const auto& id=ranking.id;
+       float dx=0.f,dy=0.f;
+       if(id=="carenagem")dx=.12f; else if(id=="motor")dx=-.14f;else if(id=="suspensao"||id=="freio")dx=.13f;
+       else if(id.find("pneu_")==0){dx=id[5]=='d'?.13f:-.13f;dy=id[6]=='e'?.10f:-.10f;}
+       set2(gl,p,"u_damagePoint",dx,dy);
        setf(gl,p,"u_cinematic",0.f);setf(gl,p,"u_box",0);setf(gl,p,"u_night",0);setf(gl,p,"u_circuit",(float)(int)game.circuit());
      }
    }

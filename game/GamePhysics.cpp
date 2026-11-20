@@ -18,6 +18,19 @@ double circuitRadius(Circuit c,double a) noexcept {auto s=shape(c);return s.base
 void Game::setCircuit(Circuit c){circuit_=c;restart(seed_);}
 const char* weatherName(Weather w) noexcept {switch(w){case Weather::Sunny:return "SOL";case Weather::Rain:return "CHUVA";case Weather::Snow:return "NEVE";case Weather::Storm:return "TEMPESTADE";case Weather::Fog:return "NEBLINA";}return "?";}
 Climate climate(Weather w) noexcept {switch(w){case Weather::Sunny:return {1.,1.,0,28,.02,1};case Weather::Rain:return {.69,.78,.7,17,.23,1.08};case Weather::Snow:return {.39,.74,.64,-4,.11,1.3};case Weather::Storm:return {.51,.49,1.,16,.62,1.18};case Weather::Fog:return {.83,.35,.12,12,.04,1.08};}return {1,1,0,28,0,1};}
+ImpactAssessment assessImpact(double speedKmh,double incidence,bool left,bool front) noexcept {
+    const double speed=std::isfinite(speedKmh)?std::clamp(speedKmh,0.,102.):0.;
+    const double angle=std::isfinite(incidence)?std::clamp(incidence,0.,1.):0.;
+    const double normalMs=speed/3.6*angle;
+    const double severity=std::clamp(normalMs,1.,20.);
+    if(normalMs>=17.)return {"chassi","IMPACTO ESTRUTURAL",severity,.013};
+    if(angle>=.72 && front){
+        if(normalMs>=10.)return {"suspensao","IMPACTO FRONTAL",severity,.023};
+        return {"carenagem","IMPACTO FRONTAL LEVE",severity,.040};
+    }
+    if(angle<.25)return {"carenagem","RASPAGEM LATERAL",std::clamp(speed/3.6*.16,1.,6.),.060};
+    return {front?(left?"pneu_de":"pneu_dd"):(left?"pneu_te":"pneu_td"),"IMPACTO NA RODA",severity,.030};
+}
 Game::Game(std::uint32_t seed):seed_(seed){restart(seed);}
 void Game::restart(std::uint32_t seed){seed_=seed;sim_=std::make_unique<cometa::Simulacao>("normal", seed);vehicle_={}; vehicle_.x=circuitRadius(circuit_,0);vehicle_.y=0;vehicle_.angle=PI/2;lastPolarAngle_=0;orbitTurns_=0;worldTime_=0;cinematic_=0;lastImpact_=-100;currentLapTime_=lastLapTime_=bestLapTime_=0.;validLap_=true;}
 bool Game::garage() const noexcept {auto f=sim_->fase();return f==cometa::Fase::Diagnostico || f==cometa::Fase::Reparando || f==cometa::Fase::Validacao || f==cometa::Fase::Abandono;}
@@ -25,6 +38,14 @@ double Game::repairFraction() const noexcept {const auto& r=sim_->reparo();retur
 double Game::trackOffset() const noexcept {double a=std::atan2(vehicle_.y,vehicle_.x);return std::hypot(vehicle_.x,vehicle_.y)-circuitRadius(circuit_,a);}
 double Game::lapProgress() const noexcept {return (std::atan2(vehicle_.y,vehicle_.x)+2*PI)/(2*PI)-std::floor((std::atan2(vehicle_.y,vehicle_.x)+2*PI)/(2*PI));}
 void Game::requestDamage(const std::string& part, double severity){if(sim_->fase()!=cometa::Fase::Corrida)return; validLap_=false; sim_->provocarImpacto(part,clamp(severity,1.,20.),part=="chassi"?.013:.036);cinematic_=2.6;lastImpact_=worldTime_;}
+void Game::requestCollision(double speedKmh,double incidence,bool left,bool front){
+    if(!std::isfinite(speedKmh)||!std::isfinite(incidence)||speedKmh<=0.)
+        throw std::invalid_argument("impacto invalido");
+    if(sim_->fase()!=cometa::Fase::Corrida)return;
+    auto hit=assessImpact(speedKmh,incidence,left,front);
+    validLap_=false;sim_->provocarImpacto(hit.component,hit.deltaVelocityMs,hit.durationS,hit.kind);
+    cinematic_=2.6;lastImpact_=worldTime_;
+}
 void Game::update(const Input& in, double dt){
     if(!(dt>0&&dt<=.2) || !std::isfinite(dt))throw std::invalid_argument("passo invalido");
     const auto before=sim_->fase();
@@ -73,7 +94,16 @@ void Game::update(const Input& in, double dt){
         // A rigidez da pista gera impactos controlados ao atravessar a defensa.
         double offset=trackOffset();
         if(std::abs(offset)>.63 && worldTime_-lastImpact_>2.2 && speed>14.){
-            requestDamage(speed>73.?"suspensao":"carenagem",clamp(speed/5.,5.,15.));
+            // Normal aproximada da defesa radial; incidência determina a energia normal e a peça atingida.
+            const double r=circuitRadius(circuit_,a),dr=derivative(circuit_,a);
+            const double length=std::hypot(r,dr),sign=std::copysign(1.,offset);
+            const double nx=sign*(r*std::cos(a)+dr*std::sin(a))/length;
+            const double ny=sign*(r*std::sin(a)-dr*std::cos(a))/length;
+            const double hx=std::cos(vehicle_.angle),hy=std::sin(vehicle_.angle);
+            const double projection=hx*nx+hy*ny;
+            const double incidence=std::abs(projection);
+            const bool left=(-hy*nx+hx*ny)>0.;
+            requestCollision(speed,incidence,left,projection>.32);
             // Retorna o kart a borda da pista, impedindo disparos repetidos de colisao.
             const double rr=circuitRadius(circuit_,a)+std::copysign(.46,offset);
             vehicle_.x=rr*std::cos(a);vehicle_.y=rr*std::sin(a);

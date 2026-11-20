@@ -10,6 +10,7 @@ uniform float u_weather;
 uniform float u_speed;
 uniform float u_flash;
 uniform float u_integrity;
+uniform vec2 u_damagePoint;
 uniform float u_quality;
 uniform float u_cinematic;
 uniform float u_box;
@@ -146,8 +147,9 @@ vec3 kart(vec2 p,vec3 under,float d){
  float inside=step(0.,texcoord.x)*step(texcoord.x,1.)*step(0.,texcoord.y)*step(texcoord.y,1.);
  col=mix(col,sprite.rgb,sprite.a*inside);
  float damage=1.-u_integrity;
- if(damage>.05){float wounds=1.-smoothstep(.04,.12,length(q-vec2(.12,.08)));
-  col=mix(col,vec3(.95,.14,.06),wounds*damage*.85);
+ if(damage>.05){float wounds=1.-smoothstep(.025,.095,length(q-u_damagePoint));
+  float scar=abs(sin((q.x+q.y*.7)*235.+noise(q*80.)*2.));
+  col=mix(col,vec3(.95,.14,.06),wounds*damage*(.45+.45*scar)*sprite.a*inside);
  }
  float glow=pow(max(0.,1.-length(q-vec2(.21,0.))/.14),3.);
  col+=vec3(.02,.14,.13)*glow*(u_quality>1.5?1.:.45);

@@ -140,7 +140,7 @@ public:
     // No jogo, aguarda a chegada fisica do reboque ao box; nos labs, conserva o fluxo temporal.
     void definirChegadaBoxExterna(bool chegou, double kmh);
     void simular(double segundos, double dt = 0.05);
-    void provocarImpacto(const std::string& id, double deltaVelocidadeMs, double duracaoS);
+    void provocarImpacto(const std::string& id, double deltaVelocidadeMs, double duracaoS, const std::string& contexto = "");
     bool iniciarReparo();
     const std::vector<Componente>& componentes() const noexcept { return componentes_; }
     const Historico<EventoDano>& danos() const noexcept { return eventos_; }
