@@ -19,12 +19,11 @@ uniform float u_circuit;
 uniform sampler2D u_kartSprite;
 #define PI 3.14159265359
 float hash21(vec2 p){p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32);return fract(p.x*p.y);}
-float hash11(float p){return fract(sin(p*127.1)*43758.5453123);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+vec2(1,1)),f.x),f.y);}
 // Copa de arvores e detalhes de floresta gerados na GPU apenas em qualidade alta.
 // Cada fragmento usa no maximo 4 celulas; nao ha objetos CPU por arvore.
 vec3 forestDetails(vec2 p,vec3 base,float distanceToTrack){
- if(u_quality<1.5)return base;
+ if(u_quality<1.5 || (u_circuit>1.5 && distanceToTrack>0.))return base;
  float woods=smoothstep(.51,.68,abs(distanceToTrack));
  if(woods<=.02)return base;
  vec2 pos=p*3.05,cell=floor(pos);vec3 outC=base;
@@ -34,11 +33,11 @@ vec3 forestDetails(vec2 p,vec3 base,float distanceToTrack){
    vec2 q=p-(id+randomPos)/3.05;
    float dist=length(q),h=hash21(id+5.6);
    float crown=.12+.06*h;
-   float shape=sin(atan(q.y,q.x)*9.+h*6.)*.007+sin(atan(q.y,q.x)*15.)*.004;
+   float azimuth=atan(q.y,q.x);
+   float shape=sin(azimuth*9.+h*6.)*.007+sin(azimuth*15.)*.004;
    float shadow=(1.-smoothstep(crown*.74,crown*1.45,length(q+vec2(.028,-.035))))*.29;
    outC*=1.-shadow*woods;
    float tree=(1.-smoothstep(crown-.013,crown+.017,dist+shape))*woods*step(.19,h);
-   if(u_circuit>1.5 && distanceToTrack>0.) continue;
    vec3 leaves=mix(vec3(.012,.055,.054),vec3(.075,.17,.098),hash21(id+33.));
    leaves*=.73+.31*smoothstep(-.5,.55,normalize(q+vec2(.002)).x*.67+normalize(q+vec2(.002)).y*.33);
    leaves+=noise(q*128.)*.028;
@@ -49,42 +48,82 @@ vec3 forestDetails(vec2 p,vec3 base,float distanceToTrack){
 float sdBox(vec2 p,vec2 b){vec2 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,q.y),0.);}
 mat2 rot(float a){return mat2(cos(a),sin(a),-sin(a),cos(a));}
 float radius(float a){vec4 s=u_circuit<.5?vec4(4.65,.62,.34,.22):u_circuit<1.5?vec4(5.35,.94,.22,.12):vec4(5.85,.32,.58,.08);return s.x+s.y*cos(3.*a+.3)+s.z*sin(5.*a-.6)+s.w*cos(7.*a+1.2);}
-float track(vec2 p){return length(p)-radius(atan(p.y,p.x));}
-vec3 baseCol(vec2 p,float d){
-  vec2 g=p*7.;float n=noise(g*3.4),fine=noise(g*15.);
-  vec3 grass=mix(vec3(.027,.083,.078),vec3(.042,.15,.115),n);
-  grass+=.022*sin(p.x*27.+n*8.)*sin(p.y*25.);
-  float forest= smoothstep(5.6,7.2,length(p));
-  grass=mix(grass,vec3(.014,.051,.059),forest*.7);
-  if(u_circuit>1.5){grass=mix(vec3(.22,.17,.10),vec3(.39,.33,.19),n);float coast=smoothstep(.8,1.8,d);grass=mix(grass,vec3(.018,.16,.21)+vec3(.035,.08,.09)*noise(p*12.),coast);}else if(u_circuit>.5){grass=mix(vec3(.08,.10,.11),vec3(.24,.26,.25),n);grass=mix(grass,vec3(.66,.72,.76),smoothstep(.6,1.3,abs(d))*.75);}
-  float roadNoise=noise(p*95.)*.035 + noise(p*5.)*.031;
-  vec3 asphalt=vec3(.053,.069,.086)+roadNoise;
-  asphalt=mix(asphalt,vec3(.09,.115,.13),.16+max(0.,sin(p.x*12.))*0.1);
-  float aa=.010;
-  vec3 col=mix(grass,asphalt,1.-smoothstep(.43,.445,abs(d)));
-  float stripe=1.-smoothstep(.012,.026,abs(abs(d)-.336));
-  col=mix(col,vec3(.78,.82,.71),stripe*.6);
-  // Linhas alternadas vermelhas e brancas nas zebras
-  float k=mod(floor(atan(p.y,p.x)*47.+p.x*9.),2.);
-  float curb=(1.-smoothstep(.008,.019,abs(abs(d)-.442)));
-  col=mix(col,mix(vec3(.97,.96,.87),vec3(.86,.14,.16),k),curb*.95);
-  float mid=(1.-smoothstep(.01,.022,abs(d)));
-  float dash=step(.55,fract(atan(p.y,p.x)*13.));
-  col=mix(col,vec3(.88,.76,.40),mid*dash*.67);
-  // Pista molhada: brilho especular e reflexos alongados.
-  float wet=step(.5,u_weather)*(.45+ .25*noise(p*11.));
-  float puddle=smoothstep(.64,.76,noise(p*9. +vec2(.2,2.)))*wet;
-  col=mix(col,vec3(.035,.083,.126)+.12*pow(max(0.,sin(u_time*.7+p.x*7.)),8.),puddle*(1.-smoothstep(.30,.39,abs(d))));
-  if(wet>.1 && u_quality>=2.){
-    float reflection=pow(max(.0,sin((p.x+2.*p.y)*14.+noise(p*12.)*4.)),20.);
-    float microglint=noise(p*85.+vec2(u_time*.025,0.));
-    col+=vec3(.15,.19,.18)*(reflection*.31+pow(microglint,17.)*.09)*wet*(1.-smoothstep(.32,.44,abs(d)));
+// Filter periodic markings toward their mean when the pattern is subpixel.
+float marking(float phase,float threshold,float pixelAngle,float frequency){
+  float width=clamp(pixelAngle*frequency,.04,1.);
+  return mix(smoothstep(threshold-width,threshold+width,cos(phase)),
+             acos(threshold)/PI,smoothstep(.6,1.,width));
+}
+vec3 baseCol(vec2 p,float d,float angle){
+  float pixel=max(u_zoom/u_resolution.y,.0001);
+  float edgeAA=max(fwidth(d)*.5,.004);
+  float pixelAngle=pixel/max(length(p),.1);
+  float outer=abs(d);
+  float terrain=noise(p*5.);
+  vec3 ground;
+  if(u_circuit>1.5){
+    float shore=d+(terrain-.5)*.13;
+    ground=mix(vec3(.25,.20,.13),vec3(.43,.35,.22),terrain);
+    if(shore>.80){
+      float depth=smoothstep(.84,1.85,shore);
+      float waves=sin(25.*dot(p,vec2(.44,.90))-u_time*1.2+terrain*3.);
+      waves*=1.-smoothstep(.02,.09,pixel);
+      vec3 water=mix(vec3(.059,.29,.29),vec3(.023,.13,.22),depth);
+      water+=vec3(.018,.044,.049)*waves;
+      float foam=(1.-smoothstep(.02,.10,abs(shore-.94+waves*.024)));
+      water=mix(water,vec3(.51,.70,.67),foam*.33);
+      ground=mix(ground,water,smoothstep(.80,1.00,shore));
+    }
+  }else if(u_circuit>.5){
+    float scree=noise(p*22.);
+    vec3 rock=mix(vec3(.10,.12,.13),vec3(.30,.27,.23),terrain);
+    float snowline=smoothstep(.8,1.65,outer+(terrain-.5)*.75);
+    ground=mix(rock,vec3(.59,.66,.72),snowline*mix(.50,.92,scree));
+  }else{
+    ground=mix(vec3(.027,.083,.078),vec3(.042,.15,.115),terrain);
+    ground=mix(ground,vec3(.014,.051,.059),smoothstep(5.6,7.2,length(p))*.7);
   }
+
+  float road=1.-smoothstep(.44-edgeAA,.44+edgeAA,outer);
+  vec3 col=ground;
+  if(road>0.){
+    vec3 asphalt=mix(vec3(.057,.064,.071),vec3(.102,.109,.115),terrain);
+    float grainFade=1.-smoothstep(.29,.72,pixel*66.);
+    if(grainFade>0.){
+      vec2 cells=p*66.;
+      float seed=hash21(floor(cells));
+      vec2 stone=fract(cells)-mix(vec2(.29),vec2(.71),vec2(seed,fract(seed*19.)));
+      float radius=.08+.15*seed;
+      float grainAA=max(.04,pixel*33.);
+      float chip=1.-smoothstep(radius-grainAA,radius+grainAA,length(stone));
+      asphalt+=grainFade*(chip*mix(-.020,.058,fract(seed*37.))-.004);
+    }
+    // Rain and storm share the wet surface. Snow and fog use their own effects.
+    bool storm=u_weather>2.5 && u_weather<3.5;
+    if((u_weather>.5 && u_weather<1.5) || storm){
+      float basin=noise(p*vec2(8.,16.)+vec2(.2,2.));
+      float wetEdge=1.-smoothstep(.31,.42,outer);
+      float puddle=smoothstep(storm?.53:.63,storm?.66:.75,basin)*wetEdge;
+      float sky=smoothstep(.12,.83,terrain);
+      asphalt=mix(asphalt*.79,mix(vec3(.030,.049,.068),vec3(.13,.18,.22),sky),puddle*.84);
+    }
+    col=mix(ground,asphalt,road);
+  }
+  float stripe=1.-smoothstep(.013-edgeAA,.013+edgeAA,abs(outer-.336));
+  col=mix(col,vec3(.78,.82,.71),stripe*.64);
+  float curb=1.-smoothstep(.023-edgeAA,.023+edgeAA,abs(outer-.442));
+  float red=marking(angle*144.,0.,pixelAngle,144.);
+  float curbFace=mix(.74,1.,smoothstep(.423,.443,outer));
+  col=mix(col,mix(vec3(.91,.90,.82),vec3(.70,.080,.075),red)*curbFace,curb*.97);
+  float mid=1.-smoothstep(.011-edgeAA,.011+edgeAA,outer);
+  float dash=marking(angle*82.,.16,pixelAngle,82.);
+  col=mix(col,vec3(.88,.76,.40),mid*dash*.67);
   if(u_weather>1.5&&u_weather<2.5){
    float snow=noise(p*19.);float ss=smoothstep(.4,.67,snow)*.78;
    col=mix(col,vec3(.71,.81,.89),ss*(smoothstep(.31,.46,abs(d))));
    col=mix(col,vec3(.2,.25,.29),ss*.08);
   }
+  col=forestDetails(p,col,d);
   // Faixa de partida / chegada no ponto leste.
   float grid=1.-smoothstep(.04,.07,abs(p.y));
   float start=(1.-smoothstep(.09,.11,abs(p.x-radius(0.))))*grid*(1.-smoothstep(.24,.34,abs(d)));
@@ -99,21 +138,17 @@ vec3 baseCol(vec2 p,float d){
   float hazard=step(.5,fract((boxp.x+boxp.y)*29.));
   float edge=smoothstep(.205,.235,max(abs(boxp.x),abs(boxp.y)))*(1.-smoothstep(.25,.27,max(abs(boxp.x),abs(boxp.y))));
   col=mix(col,mix(vec3(.96,.71,.13),vec3(.08,.09,.1),hazard),edge*.96);
-  col=forestDetails(p,col,d);
   // Illuminated pit-strip and asphalt lane microstructure.
   float pitGlow=smoothstep(radius(0.)+.23,radius(0.)+.42,p.x)*(1.-smoothstep(radius(0.)+1.69,radius(0.)+1.91,p.x));
   float neon=1.-smoothstep(.006,.018,abs(p.y-.23));
   col+=vec3(.018,.23,.18)*neon*pitGlow*step(1.5,u_quality);
 
   // Elementos da pista longa: muretas, linha de escape, barreiras e refletores laterais.
-  float angle=atan(p.y,p.x);
-  float outer=abs(d);
   float barrier=1.-smoothstep(.017,.035,abs(outer-.58));
-  float barrierStripe=step(.52,fract(angle*76.));
+  float barrierStripe=marking(angle*478.,.06,pixelAngle,478.);
   col=mix(col,mix(vec3(.18,.27,.30),vec3(.80,.88,.86),barrierStripe),barrier*.78);
   float gravel=smoothstep(.46,.50,outer)*(1.-smoothstep(.75,.85,outer));
-  float stones=pow(noise(p*64.),2.)*.055+noise(p*15.)*.023;
-  col=mix(col,vec3(.13,.14,.145)+stones,gravel*.63);
+  col=mix(col,vec3(.13,.14,.145)+terrain*.038,gravel*.63);
   float beacon=1.-smoothstep(.008,.020,length(vec2(outer-.592,mod(angle*40.+.5,1.)-.5)));
   col+=vec3(.025,.72,.64)*beacon*step(1.5,u_quality)*.82;
   // Marcas de frenagem concentradas nas entradas das curvas.
@@ -123,14 +158,6 @@ vec3 baseCol(vec2 p,float d){
   // Sombra direcional das muretas: reforco de profundidade visual.
   float castShadow=1.-smoothstep(.030,.10,abs(outer-.62));
   col*=1.-castShadow*.12;
-  // Direcao de iluminacao difusa + relevo finissimo do asfalto.
-  if(u_quality>1.5){
-    float h0=noise(p*82.),hx=noise(p*82.+vec2(.019,0.)),hy=noise(p*82.+vec2(0.,.019));
-    vec2 microNormal=vec2(hx-h0,hy-h0);
-    float facing=clamp(.7+dot(microNormal,normalize(vec2(-.7,.6)))*.32,.52,1.25);
-    float surface=1.-smoothstep(.39,.45,abs(d));
-    col*=mix(1.,facing,surface*.7);
-  }
   return col;
 }
 float wheel(vec2 q,vec2 c){return sdBox(q-c,vec2(.053,.041));}
@@ -173,11 +200,10 @@ void main(){
   vec2 pix=gl_FragCoord.xy;
   vec2 norm=(pix-u_resolution*.5)/u_resolution.y;
   vec2 world=norm*u_zoom+u_camera;
-  float d=track(world);
-  vec3 col=baseCol(world,d);
+  float angle=atan(world.y,world.x);
+  float d=length(world)-radius(angle);
+  vec3 col=baseCol(world,d,angle);
   col=kart(world,col,d);
-  float grassBlade=sin(world.x*480.)*sin(world.y*400.);
-  col+=.005*grassBlade;
   // Luz cinematografica variavel, vinheta, haze e reflexo de lente.
   float cloud=noise(world*.6+vec2(u_time*.014,-u_time*.009));
   float shadow=.82+.22*cloud;
