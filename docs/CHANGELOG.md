@@ -45,3 +45,9 @@ cp build/kart_sprite.rgba game/assets/kart_sprite.rgba
 - Trabalho anterior da fila BlueLab/Codex (motor e concreto) foi preservado, revisado e integrado com efeitos por peça. IC intocada. Captura e benchmark não validam semelhança acústica com motor real nem substituem audição humana.
 
 **Validação final da 0.9.10:** oficina isolada em 240 quadros (210 medidos), Full HD Ultra: 774,15 FPS; p95 1,738 ms, p99 1,776 ms. Litoral com chuva em 7200 quadros (7170 medidos), 120 s simulados: 532,63 FPS; p95 2,137 ms, p99 2,219 ms, máximo 2,822 ms, duas voltas, zero danos. Motor e efeito de garagem executaram também com dispositivo SDL de áudio habilitado (caminho do jogo sem `--benchmark`), sem erros reportados. Capturas reais: `docs/screenshots/0910-garage.jpg` e `0910-race.jpg`. A escuta subjetiva, compatibilidade Linux da revisão e partidas manuais prolongadas permanecem pendentes.
+
+### Validacao adicional da 0.9.10 — audio e GPU
+- Integração dos seis efeitos procedurais por componente, transição de reparo e chegada; corrigida saturação do filtro durante o impacto. Diagnóstico SDL confirma `AUDIO_DEVICE OPEN` no Windows conectado, mas não equivale a audição humana.
+- 10/10 CTest Release aprovados após o ajuste. Execução de 180 quadros com áudio habilitado passou.
+- RX 580 2048SP, Full HD Ultra, 360 quadros por cenário (330 medidos após 30 de aquecimento), sem VSync/áudio: Floresta 430,55 FPS (p95 2,552 ms); Alpes 419,42 FPS (p95 2,617 ms); Litoral 522,83 FPS (p95 2,160 ms); oficina 722,07 FPS (p95 1,622 ms). Ensaios curtos e não garantem estabilidade prolongada.
+- Capturas reais: `docs/screenshots/0910-garage.jpg` e `0910-race.jpg`. Testes Linux e homologação final permanecem pendentes.

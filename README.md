@@ -38,3 +38,9 @@ O motor usa síntese procedural original em C++17 (não é uma amostra Ferrari).
 
 ## Capturas v0.9.10 (RX 580, renderizacao real)
 [Oficina com piso de concreto fotografado](docs/screenshots/0910-garage.jpg) | [Corrida Litoral](docs/screenshots/0910-race.jpg). As imagens nao demonstram que o audio foi ouvido ou que a corrida foi jogada manualmente.
+
+## Capturas da versão 0.9.10
+- [Oficina 3D — piso fotográfico](docs/screenshots/0910-garage.jpg)
+- [Corrida com chuva — kart MK-III](docs/screenshots/0910-race.jpg)
+
+Audio: engine wavetable original com seis marchas virtuais e SFX procedurais distintos para impactos, reparos e conclusão de corrida; não usa samples de terceiros. Para verificar saída SDL, execute `cometa_game.exe` sem `--benchmark` e observe `AUDIO_DEVICE OPEN`; o dispositivo deve estar ativo, e o teste automatizado não substitui escuta real.
