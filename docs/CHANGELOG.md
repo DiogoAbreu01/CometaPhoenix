@@ -100,3 +100,19 @@ O projeto continua kart top-down 2D com oficina 3D, nao simulador JDM AAA.
 
 ## 0.10.1 - Controles do novo menu JDM
 - Mouse SDL2 no menu, botoes originais com clique e teclado, inclusive escalas Full HD e HiDPI; regressao C++17 adicionada ao CTest. Preservada a arte Sakura Edition 0.10.0 e seus assets.
+
+## 0.12.0 — World Tour: circuitos longos
+
+Os quatro mapas foram reconstruidos geometricamente, com novos setores e
+comprimento real aproximado de 2 a 2,8 km: Floresta 2203 m, Alpes 2539 m,
+Litoral 2782 m, Sakura Touge 2472 m. Antes eram centenas de metros.
+CPU e shader usam a mesma formula de curvas, com harmonic modes 2,3,4,5,7,9.
+O piloto automatico utiliza antecipacao por distancia de pista e passou
+doze condicoes de sol/chuva/neve sem colisao com as barreiras.
+Minimapa e zoom geral agora se ajustam para as quatro extensoes.
+
+Recordes usam PHOENIX_GHOST_V2 e prefixo record_long_v2, preservando os
+arquivos anteriores, que nao correspondem mais a topologia atual.
+
+Capturas reais: docs/screenshots/012-map-0.jpg, 012-map-1.jpg,
+012-map-2.jpg e 012-map-3.jpg.

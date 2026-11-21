@@ -1,6 +1,7 @@
 #include "GamePhysics.hpp"
 #include "KartCollision.hpp"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <stdexcept>
 #include <fstream>
@@ -9,17 +10,61 @@
 #include <system_error>
 namespace phoenix {
 namespace {constexpr double PI=3.14159265358979323846;
-struct Shape {double base,a3,a5,a7;};
+// Four physically extended circuits. Each harmonic is consistent with the GLSL radius().
+struct Shape {double base,a2,a3,a4,a5,a7,a9;};
 Shape shape(Circuit c) noexcept {
-    switch(c){case Circuit::Alpine:return {5.35,.94,.22,.12};case Circuit::Coast:return {5.85,.32,.58,.08};case Circuit::Sakura:return {5.15,.67,.29,.14};default:return {4.65,.62,.34,.22};}
+    switch(c){
+    case Circuit::Alpine:return {24.5,2.9,3.4,1.2,1.6,.8,.35};
+    case Circuit::Coast:return {27.0,1.3,2.1,1.6,2.6,.9,.30};
+    case Circuit::Sakura:return {23.8,2.3,2.7,.95,1.6,1.2,.60};
+    default:return {21.5,2.1,3.0,1.0,1.3,.55,.25};
+    }
 }
-double derivative(Circuit c,double a) noexcept {auto s=shape(c);return -3*s.a3*std::sin(3*a+.3)+5*s.a5*std::cos(5*a-.6)-7*s.a7*std::sin(7*a+1.2);}
-double secondDerivative(Circuit c,double a) noexcept {auto s=shape(c);return -9*s.a3*std::cos(3*a+.3)-25*s.a5*std::sin(5*a-.6)-49*s.a7*std::cos(7*a+1.2);}
+double derivative(Circuit c,double a) noexcept {
+    auto s=shape(c);
+    return 2*s.a2*std::cos(2*a+.7)-3*s.a3*std::sin(3*a+.3)-
+      4*s.a4*std::sin(4*a-.2)+5*s.a5*std::cos(5*a-.6)-
+      7*s.a7*std::sin(7*a+1.2)+9*s.a9*std::cos(9*a+.5);
+}
+double secondDerivative(Circuit c,double a) noexcept {
+    auto s=shape(c);
+    return -4*s.a2*std::sin(2*a+.7)-9*s.a3*std::cos(3*a+.3)-
+      16*s.a4*std::cos(4*a-.2)-25*s.a5*std::sin(5*a-.6)-
+      49*s.a7*std::cos(7*a+1.2)-81*s.a9*std::sin(9*a+.5);
+}
 double clamp(double a,double l,double h){return std::max(l,std::min(h,a));}
 double normAngle(double a) {return std::atan2(std::sin(a),std::cos(a));}
 }
 const char* circuitName(Circuit c) noexcept {switch(c){case Circuit::Alpine:return "ALPES";case Circuit::Coast:return "LITORAL";case Circuit::Sakura:return "SAKURA TOUGE";default:return "FLORESTA";}}
-double circuitRadius(Circuit c,double a) noexcept {auto s=shape(c);return s.base+s.a3*std::cos(3*a+.3)+s.a5*std::sin(5*a-.6)+s.a7*std::cos(7*a+1.2);}
+double circuitRadius(Circuit c,double a) noexcept {
+    auto s=shape(c);
+    return s.base+s.a2*std::sin(2*a+.7)+s.a3*std::cos(3*a+.3)+
+       s.a4*std::cos(4*a-.2)+s.a5*std::sin(5*a-.6)+
+       s.a7*std::cos(7*a+1.2)+s.a9*std::sin(9*a+.5);
+}
+double circuitMaximumRadius(Circuit c) noexcept {
+    const auto s=shape(c);
+    return s.base+std::abs(s.a2)+std::abs(s.a3)+std::abs(s.a4)+
+        std::abs(s.a5)+std::abs(s.a7)+std::abs(s.a9)+1.0;
+}
+double circuitLengthMeters(Circuit c) noexcept {
+    static const std::array<double,4> distances=[](){
+        std::array<double,4> lengths{};
+        for(int course=0;course<4;++course){
+            const auto circuit=static_cast<Circuit>(course);
+            constexpr int samples=4096;
+            constexpr double step=2*PI/samples;
+            for(int i=0;i<samples;++i){
+                const double angle=(i+.5)*step;
+                lengths[course]+=std::hypot(circuitRadius(circuit,angle),
+                                             derivative(circuit,angle))*step*15.0;
+            }
+        }
+        return lengths;
+    }();
+    const int i=static_cast<int>(c);
+    return i>=0&&i<4?distances[static_cast<std::size_t>(i)]:0.;
+}
 void Game::setCircuit(Circuit c){circuit_=c;restart(seed_);}
 const char* weatherName(Weather w) noexcept {switch(w){case Weather::Sunny:return "SOL";case Weather::Rain:return "CHUVA";case Weather::Snow:return "NEVE";case Weather::Storm:return "TEMPESTADE";case Weather::Fog:return "NEBLINA";}return "?";}
 Climate climate(Weather w) noexcept {switch(w){case Weather::Sunny:return {1.,1.,0,28,.02,1};case Weather::Rain:return {.69,.78,.7,17,.23,1.08};case Weather::Snow:return {.39,.74,.64,-4,.11,1.3};case Weather::Storm:return {.51,.49,1.,16,.62,1.18};case Weather::Fog:return {.83,.35,.12,12,.04,1.08};}return {1,1,0,28,0,1};}
@@ -80,7 +125,7 @@ bool Game::saveRecord(const std::filesystem::path& file) const {
         if(!out)return false;
         out.imbue(std::locale::classic());
         out<<std::setprecision(17);
-        out<<"PHOENIX_GHOST_V1 "<<static_cast<int>(circuit_)<<' '<<static_cast<int>(weather_)
+        out<<"PHOENIX_GHOST_V2 "<<static_cast<int>(circuit_)<<' '<<static_cast<int>(weather_)
            <<' '<<bestLapTime_<<' '<<bestGhostLap_.size()<<'\n';
         for(const auto& sample:bestGhostLap_)out<<sample.time<<' '<<sample.pose.x<<' '
            <<sample.pose.y<<' '<<sample.pose.angle<<'\n';
@@ -108,7 +153,7 @@ bool Game::loadRecord(const std::filesystem::path& file) {
     std::string magic;int circuit=-1,weather=-1;
     double best=0.;std::size_t count=0;
     if(!(in>>magic>>circuit>>weather>>best>>count) ||
-       magic!="PHOENIX_GHOST_V1" || circuit!=static_cast<int>(circuit_) ||
+       magic!="PHOENIX_GHOST_V2" || circuit!=static_cast<int>(circuit_) ||
        weather!=static_cast<int>(weather_) || !std::isfinite(best) ||
        best<1. || best>36000. || count<2 || count>maxGhostSamples_)return false;
     std::vector<GhostSample> samples;
@@ -121,7 +166,7 @@ bool Game::loadRecord(const std::filesystem::path& file) {
            s.time<0.||s.time>best+.01||
            (i==0 && s.time>1e-5) ||
            (i>0 && s.time<=samples.back().time) ||
-           std::abs(s.pose.x)>12.||std::abs(s.pose.y)>12.||
+           std::abs(s.pose.x)>45.||std::abs(s.pose.y)>45.||
            std::abs(s.pose.angle)>PI+.001 ||
            std::abs(std::hypot(s.pose.x,s.pose.y)-circuitRadius(circuit_,std::atan2(s.pose.y,s.pose.x)))>.7)
             return false;
@@ -242,7 +287,9 @@ void Game::update(const Input& in, double dt){
         speed=clamp(speed+accel*dt,0.,102.);
         double steer=((in.left?1.:0.)-(in.right?1.:0.));
         if(autopilot_){
-            const double a=std::atan2(vehicle_.y,vehicle_.x), look=a+.075+speed*.00065;
+            const double a=std::atan2(vehicle_.y,vehicle_.x);
+            const double currentRadius=circuitRadius(circuit_,a);
+            const double look=a+std::clamp((.53+speed*.006)/std::hypot(currentRadius,derivative(circuit_,a)),.018,.09);
             const double r=circuitRadius(circuit_,look);
             const double desired=std::atan2(r*std::sin(look)-vehicle_.y,r*std::cos(look)-vehicle_.x);
             steer=clamp(normAngle(desired-vehicle_.angle)*3.2,-1.,1.);

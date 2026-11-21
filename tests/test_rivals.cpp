@@ -40,7 +40,7 @@ int main() {
                 double previousProgress = 0.0;
                 int previousLaps = 0;
                 bool crossedZero = false;
-                for (int frame = 0; frame < 5400 && !slower.finished(1); ++frame) {
+                for (int frame = 0; frame < 30000 && !slower.finished(1); ++frame) {
                     first.update(dt, 1);
                     second.update(dt, 1);
                     slower.update(dt, 1);
@@ -76,7 +76,7 @@ int main() {
                 const double finishTime = first.raceTime();
                 first.update(1.0, 1);
                 REQUIRE(first.raceTime() == finishTime && first.totalProgress() == turn);
-                REQUIRE(first.raceTime() < slower.raceTime() && slower.raceTime() < 90.0);
+                REQUIRE(first.raceTime() < slower.raceTime() && slower.raceTime() < 440.0);
                 if (start == -0.08) {
                     if (weather == Weather::Sunny) {
                         sunnyTime = first.raceTime();
@@ -101,13 +101,13 @@ int main() {
     free.update(1.0, 0);
     sunny.update(1.0, 0);
     REQUIRE(free.totalProgress() > pausedProgress && free.totalProgress() < sunny.totalProgress());
-    free.update(150.0, 0);
+    free.update(750.0, 0);
     REQUIRE(free.laps() >= 2 && !free.finished(0));
-    REQUIRE(free.raceTime() == 152.0);
+    REQUIRE(free.raceTime() == 752.0);
 
-    sunny.update(150.0, 2);
+    sunny.update(550.0, 2);
     REQUIRE(sunny.finished(2) && sunny.laps() == 2);
-    REQUIRE(sunny.totalProgress() == 2.0 * turn && sunny.raceTime() < 152.0);
+    REQUIRE(sunny.totalProgress() == 2.0 * turn && sunny.raceTime() < 552.0);
     sunny.update(1.0, 0);
     REQUIRE(sunny.totalProgress() > 2.0 * turn && !sunny.finished(0));
 
@@ -117,8 +117,8 @@ int main() {
         passing.reset(circuit, Weather::Sunny, 1.0, -0.06);
         repeat = clear = passing;
         const auto grid = passing.pose();
-        const auto player = trackPose(circuit, 0.015);
-        const auto other = trackPose(circuit, 0.015, -passingSide * 0.20);
+        const auto player = trackPose(circuit, -0.045);
+        const auto other = trackPose(circuit, -0.045, -passingSide * 0.20);
         clear.setCompetitors(player, other, false);
         double previousOffset = 0.0;
         double peakOffset = 0.0;
@@ -144,8 +144,8 @@ int main() {
         }
         REQUIRE(peakOffset > 0.16);
         REQUIRE(std::abs(previousOffset) < 1e-12);
-        REQUIRE(passing.totalProgress() > 0.075);
-        passing.update(90.0, 1);
+        REQUIRE(passing.totalProgress() > 0.03);
+        passing.update(350.0, 1);
         REQUIRE(passing.finished(1) && samePose(passing.pose(), grid));
     }
 
@@ -155,7 +155,7 @@ int main() {
     hard.setDifficulty(RivalDifficulty::Hard);
     for (auto* rival : {&easy, &normal, &hard}) {
         rival->reset(circuit, Weather::Rain, 1.0, 0.0);
-        rival->update(90.0, 1);
+        rival->update(350.0, 1);
         REQUIRE(rival->finished(1));
     }
     REQUIRE(easy.difficulty() == RivalDifficulty::Easy);

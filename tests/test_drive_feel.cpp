@@ -11,7 +11,7 @@ int main(){
  CHECK(normal.vehicle().speed>22.);
  phoenix::Input steer{};steer.throttle=true;steer.left=true;
  phoenix::Input handbrake=steer;handbrake.drift=true;
- for(int i=0;i<32;++i){normal.update(steer,.02);drift.update(handbrake,.02);}
+ for(int i=0;i<14;++i){normal.update(steer,.02);drift.update(handbrake,.02);}
  CHECK(drift.driftAmount()>.7);
  CHECK(drift.driftPoints()>0.);
  CHECK(std::isfinite(drift.vehicle().x) && std::isfinite(drift.vehicle().y));

@@ -107,3 +107,19 @@ Tela principal Sakura Edition agora recebe cliques em Iniciar Corrida, circuito,
 - Segurar Espaco/Shift ou botao X no controle ativa derrapagem arcade ao dirigir acima de 22 km/h. Direcao progressiva, perda de aderencia e velocidade, pontos de drift e marcas visuais perto do kart.
 - Piloto automatico ignora drift. Este e um recurso de dirigibilidade de kart, nao drift JDM.
 - Testes novos: inicio/fim da derrapagem, maior resposta de angulo e reset. 17/17 testes Windows.
+
+## 0.12.0 — World Tour: circuitos longos
+
+Os quatro mapas foram reconstruidos geometricamente, com novos setores e
+comprimento real aproximado de 2 a 2,8 km: Floresta 2203 m, Alpes 2539 m,
+Litoral 2782 m, Sakura Touge 2472 m. Antes eram centenas de metros.
+CPU e shader usam a mesma formula de curvas, com harmonic modes 2,3,4,5,7,9.
+O piloto automatico utiliza antecipacao por distancia de pista e passou
+doze condicoes de sol/chuva/neve sem colisao com as barreiras.
+Minimapa e zoom geral agora se ajustam para as quatro extensoes.
+
+Recordes usam PHOENIX_GHOST_V2 e prefixo record_long_v2, preservando os
+arquivos anteriores, que nao correspondem mais a topologia atual.
+
+Capturas reais: docs/screenshots/012-map-0.jpg, 012-map-1.jpg,
+012-map-2.jpg e 012-map-3.jpg.

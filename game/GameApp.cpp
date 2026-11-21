@@ -251,18 +251,19 @@ void drawHUD(UI& ui,const phoenix::Game& game,
     const float mx=float(w)-132*S,my=293*S;
     ui.rect(float(w)-261*S,207*S,235*S,173*S,{.023f,.037f,.072f,.81f});
     ui.text("MAPA / OVERVIEW",float(w)-241*S,219*S,1.30f*S,MUTED);
+    const float mapScale=90.f/(float)phoenix::circuitMaximumRadius(game.circuit());
     for(int i=0;i<80;++i){
        float a=6.2831853f*i/80.f,b=6.2831853f*(i+1)/80.f;
-       float ra=float(phoenix::circuitRadius(game.circuit(),a))*10.2f*S;
-       float rb=float(phoenix::circuitRadius(game.circuit(),b))*10.2f*S;
+       float ra=float(phoenix::circuitRadius(game.circuit(),a))*mapScale*S;
+       float rb=float(phoenix::circuitRadius(game.circuit(),b))*mapScale*S;
        ui.line(mx+ra*std::cos(a),my+ra*.60f*std::sin(a),
                mx+rb*std::cos(b),my+rb*.60f*std::sin(b),3.2f*S,{.86f,.75f,.77f,.93f});
     }
-    ui.rect(mx+float(v.x)*10.2f*S-4*S,my+float(v.y)*6.12f*S-4*S,8*S,8*S,CYAN);
+    ui.rect(mx+float(v.x)*mapScale*S-4*S,my+float(v.y)*mapScale*.60f*S-4*S,8*S,8*S,CYAN);
     for(int i=0;i<rivalCount;++i){
        auto other=rivals[i].pose();
-       ui.rect(mx+float(other.x)*10.2f*S-2.5f*S,
-               my+float(other.y)*6.12f*S-2.5f*S,5*S,5*S,i?GOLD:BAD);
+       ui.rect(mx+float(other.x)*mapScale*S-2.5f*S,
+               my+float(other.y)*mapScale*.60f*S-2.5f*S,5*S,5*S,i?GOLD:BAD);
     }
     if(game.hasGhost())ui.text(ghostVisible?"GHOST ON":"GHOST OFF",
         float(w)-239*S,354*S,1.18f*S,ghostVisible?CYAN:MUTED);
@@ -325,7 +326,7 @@ void drawMenu(UI& ui,int w,int h,int quality,phoenix::Circuit circuit,int laps,
     ui.rect(x+(41+37*i)*S,y+428*S,26*S,4*S,
         i==track?ROSE:Color{.29f,.29f,.34f,.7f});
  }
- ui.text("0"+intStr(track+1)+" / 04  -  "+(track==3?"JAPAN / HANAMI":"WORLD TOUR"),
+ ui.text("0"+intStr(track+1)+" / 04  -  "+fmt(phoenix::circuitLengthMeters(circuit)/1000.,2)+" KM",
          x+243*S,y+425*S,1.36f*S,MUTED);
  ui.text("[ L ]  "+(laps?intStr(laps):std::string("FREE"))+" LAPS    [ K ] "+intStr(rivals)+" RIVALS",
          x+39*S,y+479*S,1.73f*S,WHITE);
@@ -422,7 +423,7 @@ int main(int argc,char**argv){
     if(!dataDirOverride.empty())recordDir=dataDirOverride;
     else if(char* pref=SDL_GetPrefPath("Cometa","Phoenix")){recordDir=pref;SDL_free(pref);}
   }
-  auto recordFile=[&](){return recordDir/("record_c"+std::to_string((int)game.circuit())+"_w"+std::to_string((int)game.weather())+".phx");};
+  auto recordFile=[&](){return recordDir/("record_long_v2_c"+std::to_string((int)game.circuit())+"_w"+std::to_string((int)game.weather())+".phx");};
   double recordedBest=0.;
   auto reloadRecord=[&](){
     if(!recordDir.empty())game.loadRecord(recordFile());
@@ -604,7 +605,7 @@ int main(int argc,char**argv){
        gl.ActiveTexture(TEXTURE0);
      }else{
        const auto &ranking=game.simulator().componenteMaisCritico();set2(gl,p,"u_camera",mapOpen?0.f:smx,mapOpen?0.f:smy);set2(gl,p,"u_car",(float)game.vehicle().x,(float)game.vehicle().y);
-       setf(gl,p,"u_heading",(float)game.vehicle().angle);setf(gl,p,"u_zoom",mapOpen?17.f:2.85f);
+       setf(gl,p,"u_heading",(float)game.vehicle().angle);setf(gl,p,"u_zoom",mapOpen?(float)(2.24*phoenix::circuitMaximumRadius(game.circuit())):2.85f);
        const auto gh=game.ghostPose();
        setf(gl,p,"u_hasGhost",game.hasGhost()&&ghostVisible?1.f:0.f);
        setf(gl,p,"u_accessible",accessible?1.f:0.f);

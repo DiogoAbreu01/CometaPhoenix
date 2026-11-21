@@ -58,7 +58,16 @@ vec3 forestDetails(vec2 p,vec3 base,float distanceToTrack){
 }
 float sdBox(vec2 p,vec2 b){vec2 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,q.y),0.);}
 mat2 rot(float a){return mat2(cos(a),sin(a),-sin(a),cos(a));}
-float radius(float a){vec4 s=u_circuit<.5?vec4(4.65,.62,.34,.22):u_circuit<1.5?vec4(5.35,.94,.22,.12):(u_circuit<2.5?vec4(5.85,.32,.58,.08):vec4(5.15,.67,.29,.14));return s.x+s.y*cos(3.*a+.3)+s.z*sin(5.*a-.6)+s.w*cos(7.*a+1.2);}
+float radius(float a){
+  vec4 s=u_circuit<.5?vec4(21.5,2.1,3.0,1.0):
+         u_circuit<1.5?vec4(24.5,2.9,3.4,1.2):
+         u_circuit<2.5?vec4(27.0,1.3,2.1,1.6):vec4(23.8,2.3,2.7,.95);
+  vec3 t=u_circuit<.5?vec3(1.3,.55,.25):
+         u_circuit<1.5?vec3(1.6,.8,.35):
+         u_circuit<2.5?vec3(2.6,.9,.30):vec3(1.6,1.2,.60);
+  return s.x+s.y*sin(2.*a+.7)+s.z*cos(3.*a+.3)+s.w*cos(4.*a-.2)+
+         t.x*sin(5.*a-.6)+t.y*cos(7.*a+1.2)+t.z*sin(9.*a+.5);
+}
 // Filter periodic markings toward their mean when the pattern is subpixel.
 float marking(float phase,float threshold,float pixelAngle,float frequency){
   float width=clamp(pixelAngle*frequency,.04,1.);

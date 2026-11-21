@@ -12,6 +12,8 @@ namespace phoenix {
 enum class Circuit { Forest, Alpine, Coast, Sakura };
 const char* circuitName(Circuit circuit) noexcept;
 double circuitRadius(Circuit circuit,double angle) noexcept;
+double circuitLengthMeters(Circuit circuit) noexcept;
+double circuitMaximumRadius(Circuit circuit) noexcept;
 enum class Weather { Sunny, Rain, Snow, Storm, Fog };
 const char* weatherName(Weather weather) noexcept;
 struct ImpactAssessment { const char* component; const char* kind; double deltaVelocityMs; double durationS; };
