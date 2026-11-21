@@ -16,7 +16,7 @@ enum class Weather { Sunny, Rain, Snow, Storm, Fog };
 const char* weatherName(Weather weather) noexcept;
 struct ImpactAssessment { const char* component; const char* kind; double deltaVelocityMs; double durationS; };
 ImpactAssessment assessImpact(double speedKmh,double incidence,bool left,bool front) noexcept;
-struct Input { bool throttle{}, brake{}, left{}, right{}, reset{}; };
+struct Input { bool throttle{}, brake{}, left{}, right{}, reset{}, drift{}; };
 struct Vehicle { double x{1.92}, y{0}, angle{1.5707963267948966}, speed{}, lateral{}; int lap{}; };
 struct GhostPose {double x{},y{},angle{};};
 struct KartContactEvent {bool overlap{},damaged{};double closingSpeedMs{};bool impulseApplied{};};
@@ -39,6 +39,8 @@ public:
     void requestCollision(double speedKmh,double incidence,bool left,bool front);
     KartContactEvent collideRival(const GhostPose& rival,const GhostPose& previousRival,double dt);
     const HandlingState& handling() const noexcept { return handling_; }
+    double driftAmount() const noexcept { return driftBlend_; }
+    double driftPoints() const noexcept { return driftPoints_; }
     Weather weather() const noexcept { return weather_; }
     const Vehicle& vehicle() const noexcept { return vehicle_; }
     const cometa::Simulacao& simulator() const noexcept { return *sim_; }
@@ -81,6 +83,7 @@ private:
     std::uint32_t seed_{42};
     double worldTime_{0}, cinematic_{0}, lastImpact_{-100}, lastKartContact_{-100};
     bool autopilot_{false};
+    double steeringResponse_{},driftBlend_{},driftPoints_{};
     double lastPolarAngle_{0}, orbitTurns_{0};
     double currentLapTime_{}, lastLapTime_{}, bestLapTime_{};
     bool validLap_{true}, cleanLap_{true};

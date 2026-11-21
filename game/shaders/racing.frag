@@ -20,6 +20,7 @@ uniform float u_integrity;
 uniform vec2 u_damagePoint;
 uniform float u_quality;
 uniform float u_racingAssist;
+uniform float u_drift;
 uniform float u_cinematic;
 uniform float u_box;
 uniform float u_night;
@@ -388,6 +389,13 @@ void main(){
      }
   }
   col=tyreSpray(world,col);
+  if(u_drift>.12 && u_speed>20.){
+      vec2 local=rot(-u_heading)*(world-u_car);
+      float streak=smoothstep(-.09,-.22,local.x)*(1.-smoothstep(-.75,-.40,local.x));
+      float streaks=(1.-smoothstep(.007,.030,abs(abs(local.y)-.105)));
+      float fade=(1.-smoothstep(.15,.73,length(local)));
+      col=mix(col,vec3(.11,.10,.14),clamp(streak*streaks*fade*u_drift*.75,0.,.58));
+  }
   col=kart(world,col,d);
   if(u_circuit>2.5) col=sakuraPetals(gl_FragCoord.xy/u_resolution.y,col,u_time);
   // Luz cinematografica variavel, vinheta, haze e reflexo de lente.

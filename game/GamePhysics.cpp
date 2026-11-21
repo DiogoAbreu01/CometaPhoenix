@@ -42,7 +42,7 @@ void Game::restart(std::uint32_t seed){
     seed_=seed;sim_=std::make_unique<cometa::Simulacao>("normal", seed);vehicle_={};
     vehicle_.x=circuitRadius(circuit_,0);vehicle_.y=0;vehicle_.angle=PI/2;
     lastPolarAngle_=0;orbitTurns_=0;worldTime_=0;cinematic_=0;lastImpact_=-100;lastKartContact_=-100;
-    handling_={};
+    handling_={};steeringResponse_=driftBlend_=driftPoints_=0.;
     currentLapTime_=lastLapTime_=bestLapTime_=0.;validLap_=true;cleanLap_=true;validCompletedLaps_=0;
     tireModel_.reset(climate(weather_).temperature);
     ghostLap_.reserve(maxGhostSamples_);
@@ -221,7 +221,9 @@ void Game::update(const Input& in, double dt){
                                           healthGrip,.16,1.05);
         handling_.brakeEffectiveness=std::clamp(sim_->componente("freio").integridade*
                                               tireModel_.brakingEfficiency(),.35,1.);
-        double grip=handling_.effectiveGrip;
+        const bool drifting=!autopilot_ && in.drift && speed>22.;
+        driftBlend_+=std::clamp((drifting?1.:0.)-driftBlend_,-3.5*dt,3.5*dt);
+        double grip=handling_.effectiveGrip*(1.-.24*driftBlend_);
         const double engineEfficiency=std::clamp(sim_->componente("motor").integridade,.40,1.);
         double accel= (in.throttle ? 22.0*engineEfficiency:0.0) -
             (in.brake? 35.0*handling_.brakeEffectiveness:0.0) -
@@ -236,6 +238,7 @@ void Game::update(const Input& in, double dt){
             const double target=std::clamp(limit*caution,14.,68.*std::sqrt(grip)*caution);
             accel=std::clamp((target-speed)*2.3,-35.*handling_.brakeEffectiveness,22.*engineEfficiency);
         }
+        accel-=driftBlend_*(3.5+speed*.038);
         speed=clamp(speed+accel*dt,0.,102.);
         double steer=((in.left?1.:0.)-(in.right?1.:0.));
         if(autopilot_){
@@ -244,7 +247,13 @@ void Game::update(const Input& in, double dt){
             const double desired=std::atan2(r*std::sin(look)-vehicle_.y,r*std::cos(look)-vehicle_.x);
             steer=clamp(normAngle(desired-vehicle_.angle)*3.2,-1.,1.);
         }
-        double turn= (0.8+speed*.014) * grip * steer * dt;
+        if(!autopilot_){
+           steeringResponse_+=std::clamp(steer-steeringResponse_,-7.5*dt,7.5*dt);
+           steer=steeringResponse_;
+        } else steeringResponse_=steer;
+        double turn=(0.8+speed*.014)*grip*steer*dt*(1.+.68*driftBlend_);
+        if(driftBlend_>.15 && std::abs(steer)>.12 && speed>24.)
+            driftPoints_+=dt*std::abs(steer)*speed*.35*driftBlend_;
         vehicle_.lateral= turn/dt * speed/3.6 /9.80665;
         vehicle_.angle+=turn;
         // A unidade de pista equivale a ~15 m; posicao atualizada com integracao semiexplicita.

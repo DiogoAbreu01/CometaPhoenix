@@ -230,6 +230,7 @@ void drawHUD(UI& ui,const phoenix::Game& game,
     ui.text("VELOCIDADE / SPEED",bx+18*S,by+13*S,1.53f*S,MUTED);
     ui.text(fmt(v.speed,0),bx+16*S,by+48*S,7.0f*S,WHITE);
     ui.text("KM/H",bx+153*S,by+84*S,1.7f*S,CYAN);
+    if(game.driftAmount()>.30)ui.text("DRIFT +"+fmt(game.driftPoints(),0),bx+16*S,by+109*S,1.30f*S,GOLD);
     ui.rect(bx+18*S,by+124*S,206*S,5*S,{.28f,.31f,.36f,.85f});
     ui.rect(bx+18*S,by+124*S,float(206*S*std::clamp(v.speed/102.,0.,1.)),5*S,ROSE);
     ui.text("TIRE "+fmt(game.handling().tireTemperatureC,0)+"C   WEAR "+
@@ -287,7 +288,7 @@ void drawHUD(UI& ui,const phoenix::Game& game,
  ui.rect(0,float(h)-48*S,float(w),2*S,ROSE);
  ui.text(game.status(),26*S,float(h)-35*S,1.58f*S,WHITE);
  ui.text(workshop?"ARROWS OR A/D CAMERA  /  P PAUSE  /  R RESTART":
-   "WASD DRIVE / T COURSE IN MENU / P PAUSE / M MAP / G GHOST / V AUDIO",
+   "WASD DIRIGIR / SPACE DRIFT / P PAUSA / M MAPA / G FANTASMA",
    26*S,float(h)-15*S,1.14f*S,MUTED);
  ui.text("FPS "+fmt(fps,0)+"   Q "+intStr(quality),
     std::max(250.f,float(w)-161*S),float(h)-32*S,1.23f*S,GOLD);
@@ -522,6 +523,7 @@ int main(int argc,char**argv){
    }
    const auto*kb=SDL_GetKeyboardState(nullptr);
    phoenix::Input in{};
+   in.drift=kb[44]||kb[225]||kb[229];
    in.throttle=kb[82];in.brake=kb[81];in.left=kb[80];in.right=kb[79];
    if(controlLayout==0){in.throttle|=kb[26];in.brake|=kb[22];in.left|=kb[4];in.right|=kb[7];}
    else if(controlLayout==1){in.throttle|=kb[12];in.brake|=kb[14];in.left|=kb[13];in.right|=kb[15];}
@@ -532,6 +534,7 @@ int main(int argc,char**argv){
       in.left |= steer < -8500;in.right |= steer>8500;
       in.throttle |= SDL_GameControllerGetAxis(controller,5)>7000 || SDL_GameControllerGetButton(controller,0);
       in.brake |= SDL_GameControllerGetAxis(controller,4)>7000 || SDL_GameControllerGetButton(controller,1);
+      in.drift |= SDL_GameControllerGetButton(controller,2)!=0;
       const bool start=SDL_GameControllerGetButton(controller,6)!=0;
       if(start && !previousGamepadPause){if(menuOpen)menuOpen=false;else paused=!paused;}
       previousGamepadPause=start;
@@ -617,7 +620,7 @@ int main(int argc,char**argv){
        gl.ActiveTexture(TEXTURE0+5);gl.BindTexture(TEXTURE_2D,sakuraTexture);gl.Uniform1i(uniform(gl,p,"u_sakuraSprite"),5);
        gl.ActiveTexture(TEXTURE0);
        setf(gl,p,"u_weather",(float)(int)game.weather());setf(gl,p,"u_speed",(float)game.vehicle().speed);
-       setf(gl,p,"u_flash",0.f);setf(gl,p,"u_integrity",(float)ranking.integridade);setf(gl,p,"u_racingAssist",racingAssist?1.f:0.f);
+       setf(gl,p,"u_flash",0.f);setf(gl,p,"u_integrity",(float)ranking.integridade);setf(gl,p,"u_racingAssist",racingAssist?1.f:0.f);setf(gl,p,"u_drift",(float)game.driftAmount());
        const auto& id=ranking.id;
        float dx=0.f,dy=0.f;
        if(id=="carenagem")dx=.12f; else if(id=="motor")dx=-.14f;else if(id=="suspensao"||id=="freio")dx=.13f;
