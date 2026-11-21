@@ -15,6 +15,7 @@ int main(){
  CHECK(menuHitTest(430,597,1280,720,1280,720)==MenuAction::Guide);
  CHECK(menuHitTest(140,640,1280,720,1280,720)==MenuAction::Colors);
  CHECK(menuHitTest(450,640,1280,720,1280,720)==MenuAction::Quality);
+ CHECK(menuHitTest(135,665,1280,720,1280,720)==MenuAction::Championship);
  CHECK(menuHitTest(1200,350,1280,720,1280,720)==MenuAction::None);
  // Scale to a 1920x1080 drawable.
  CHECK(menuHitTest(150,525,1920,1080,1920,1080)==MenuAction::Start);

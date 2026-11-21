@@ -95,6 +95,10 @@ void Game::restart(std::uint32_t seed){
     bestGhostLap_.clear();
     startGhostLap();
 }
+void Game::seedTireWear(double wear) noexcept {
+    tireModel_.seedWear(wear);
+    handling_.tireWear=tireModel_.state().wear;
+}
 bool Game::garage() const noexcept {auto f=sim_->fase();return f==cometa::Fase::Diagnostico || f==cometa::Fase::Reparando || f==cometa::Fase::Validacao || f==cometa::Fase::Abandono;}
 bool Game::hasGhost() const noexcept { return !bestGhostLap_.empty(); }
 

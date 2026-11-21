@@ -123,3 +123,28 @@ arquivos anteriores, que nao correspondem mais a topologia atual.
 
 Capturas reais: docs/screenshots/012-map-0.jpg, 012-map-1.jpg,
 012-map-2.jpg e 012-map-3.jpg.
+
+## 0.13.0 — Cup World Tour / Race & Repair
+
+Campeonato de quatro etapas: Sakura, Floresta, Alpes, Litoral.
+Uma volta longa por etapa (2,20–2,78 km), dois rivais e posicoes 10/7/4 pontos.
+Climas sol, chuva, neve e sol. O mesmo kart carrega desgaste de pneus entre etapas.
+
+No menu, pressione J ou clique em CAMPEONATO para comecar.
+Ao completar uma etapa use 1 (conservar materiais, custo zero), 2 (reparo rapido:
+1 material, 9 Wh, desgaste -16%) ou 3 (reparo completo: 2 materiais,
+24 Wh, desgaste -44%). Orcamento inicial 4 materiais e 90 Wh.
+Esc abre o menu, O retorna a corrida livre, J reinicia campeonato.
+R reinicia etapa ainda em andamento.
+
+O placar final fica em championship_history.csv, e resultados individuais
+em race_history.csv no diretorio SDL2. Arquivos locais sem nuvem.
+A campanha atual so continua enquanto o jogo permanece aberto; nao existe
+recuperacao da etapa atual apos encerrar o processo.
+
+QA automatizado, sem alterar dados pessoais:
+cometa_game --championship --autopilot --auto-service --frames 62000 --no-vsync --data-dir ./qa-cup --quality 0
+
+Em Windows, o executavel completou as quatro provas e gravou os dados:
+37 pontos, P1 geral, 0 materiais, 42 Wh restantes. Testes CTest 19/19.
+Capturas: docs/screenshots/013-menu.jpg e docs/screenshots/013-service.jpg.

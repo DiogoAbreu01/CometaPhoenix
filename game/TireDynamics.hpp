@@ -46,6 +46,11 @@ public:
         state_.gripFactor = gripAt(state_.temperatureC, state_.wear, rain, dirt);
     }
 
+    void seedWear(double wear) noexcept {
+        if(!std::isfinite(wear))return;
+        state_.wear=std::clamp(wear,0.,1.);
+        state_.gripFactor=gripAt(state_.temperatureC,state_.wear,0.,0.);
+    }
     const TireState& state() const noexcept { return state_; }
     double grip() const noexcept { return state_.gripFactor; }
     double brakingEfficiency() const noexcept { return 1 - state_.brakeFade; }

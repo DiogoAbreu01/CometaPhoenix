@@ -3,6 +3,7 @@
 #include "GamePhysics.hpp"
 #include "MenuInteraction.hpp"
 #include "RaceResults.hpp"
+#include "Championship.hpp"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -208,7 +209,7 @@ float partId(const std::string& s){if(s=="chassi")return 1;if(s=="carenagem")ret
 // Studio JDM: editorial typography, restrained glass cards, sakura pink + amber.
 void drawHUD(UI& ui,const phoenix::Game& game,
     const std::array<phoenix::RivalAI,2>& rivals,int rivalCount,
-    int w,int h,int quality,bool paused,double fps,bool ghostVisible){
+    int w,int h,int quality,bool paused,double fps,bool ghostVisible,bool showSoloFinish){
  const float S=std::max(.31f,std::min({1.42f,float(w)/1280.f,float(h)/720.f}));
  const auto& v=game.vehicle();const auto& sim=game.simulator();
  const bool workshop=game.garage();
@@ -238,14 +239,14 @@ void drawHUD(UI& ui,const phoenix::Game& game,
     ui.rect(28*S,90*S,260*S,81*S,{.027f,.037f,.072f,.76f});
     ui.text("CLASSIFICACAO",43*S,103*S,1.50f*S,CYAN);
     ui.text("P"+intStr(position)+"/"+intStr(rivalCount+1),43*S,129*S,3.15f*S,WHITE);
-    ui.text("VOLTA "+intStr(game.validCompletedLaps()+1)+
+    ui.text("VOLTA "+intStr(game.targetLaps()>0?std::min(game.validCompletedLaps()+1,game.targetLaps()):game.validCompletedLaps()+1)+
        (game.targetLaps()>0?"/"+intStr(game.targetLaps()):"  FREE"),132*S,134*S,1.60f*S,GOLD);
     // Deliberately compact timing display leaves the actual track visible.
     const float rx=float(w)-261*S;
     ui.rect(rx,91*S,235*S,97*S,INK);
     ui.rect(rx,91*S,235*S,2*S,ROSE);
     ui.text("TEMPO DE VOLTA",rx+14*S,104*S,1.42f*S,MUTED);
-    ui.text(fmt(game.currentLapTime(),2)+" S",rx+14*S,127*S,2.55f*S,WHITE);
+    ui.text(fmt(game.finished()?game.lastLapTime():game.currentLapTime(),2)+" S",rx+14*S,127*S,2.55f*S,WHITE);
     ui.text("PB "+(game.bestLapTime()>0.?fmt(game.bestLapTime(),2):std::string("--")),
          rx+14*S,164*S,1.33f*S,GOLD);
     const float mx=float(w)-132*S,my=293*S;
@@ -293,7 +294,7 @@ void drawHUD(UI& ui,const phoenix::Game& game,
    26*S,float(h)-15*S,1.14f*S,MUTED);
  ui.text("FPS "+fmt(fps,0)+"   Q "+intStr(quality),
     std::max(250.f,float(w)-161*S),float(h)-32*S,1.23f*S,GOLD);
- if(game.finished()){
+ if(game.finished() && showSoloFinish){
     ui.rect(float(w)*.16f,float(h)*.38f,float(w)*.68f,148*S,INK);
     ui.rect(float(w)*.16f,float(h)*.38f,float(w)*.68f,5*S,ROSE);
     ui.text("FINISH / P"+intStr(position),float(w)*.24f,float(h)*.40f,5.0f*S,WHITE);
@@ -305,11 +306,11 @@ void drawHUD(UI& ui,const phoenix::Game& game,
 }
 void drawMenu(UI& ui,int w,int h,int quality,phoenix::Circuit circuit,int laps,
     int rivals,int difficulty,int volumePct,const std::vector<phoenix::RaceOutcome>& history,
-    bool showHistory,int controlLayout,bool accessible){
+    bool showHistory,int controlLayout,bool accessible,bool championshipActive){
  const float S=std::max(.31f,std::min({1.42f,float(w)/1280.f,float(h)/720.f}));
  const float x=44*S,y=58*S;
- ui.rect(x,y,525*S,595*S,{.027f,.032f,.064f,.80f});
- ui.rect(x,y,5*S,595*S,ROSE);
+ ui.rect(x,y,525*S,625*S,{.027f,.032f,.064f,.80f});
+ ui.rect(x,y,5*S,625*S,ROSE);
  ui.rect(x,y,525*S,2*S,{.97f,.68f,.67f,.93f});
  ui.text("MIDNIGHT TOUGE / GARAGE 01",x+23*S,y+25*S,1.58f*S,GOLD);
  ui.text("COMETA",x+24*S,y+76*S,7.25f*S,WHITE);
@@ -336,6 +337,8 @@ void drawMenu(UI& ui,int w,int h,int quality,phoenix::Circuit circuit,int laps,
      x+39*S,y+537*S,1.35f*S,MUTED);
  ui.text("[ N ] COLORS  "+std::string(accessible?"ALT":"STD")+"   /   Q QUALITY "+intStr(quality),
      x+39*S,y+558*S,1.36f*S,GOLD);
+ ui.text(championshipActive?"[ J ] NOVA COPA  [ O ] CORRIDA LIVRE":"[ J ] CAMPEONATO  /  4 ETAPAS",
+     x+39*S,y+593*S,1.52f*S,ROSE);
  if(showHistory){
     float hx=590*S,hy=315*S;
     ui.rect(hx,hy,649*S,306*S,{.024f,.035f,.067f,.95f});
@@ -355,6 +358,37 @@ void drawMenu(UI& ui,int w,int h,int quality,phoenix::Circuit circuit,int laps,
  ui.text("JDM / 20XX   -   C++17",std::max(350.f,float(w)-263*S),
     float(h)-21*S,1.33f*S,ROSE);
 }
+void drawChampionship(UI&ui,const phoenix::Championship& cup,int w,int h){
+ const float S=std::max(.31f,std::min({1.42f,float(w)/1280.f,float(h)/720.f}));
+ ui.rect(float(w)*.32f,82*S,365*S,50*S,{.022f,.033f,.063f,.94f});
+ ui.rect(float(w)*.32f,82*S,4*S,50*S,GOLD);
+ ui.text("CUP  "+intStr(cup.stage()+1)+"/4  |  PTS "+intStr(cup.points()[0])+
+       "/"+intStr(cup.points()[1])+"/"+intStr(cup.points()[2]),
+       float(w)*.32f+15*S,100*S,1.66f*S,WHITE);
+ if(!cup.betweenStages() && !cup.finished())return;
+ const float x=float(w)*.20f,y=float(h)*.27f;
+ ui.rect(x,y,float(w)*.60f,315*S,{.025f,.034f,.067f,.96f});
+ ui.rect(x,y,float(w)*.60f,5*S,ROSE);
+ ui.text(cup.finished()?"WORLD TOUR / CAMPEONATO CONCLUIDO":"ETAPA FINALIZADA / BOX",
+         x+28*S,y+24*S,2.72f*S,WHITE);
+ ui.text("CLASSIFICACAO   P"+intStr(cup.overallPosition())+
+         "   PONTOS "+intStr(cup.points()[0])+" / "+intStr(cup.points()[1])+
+         " / "+intStr(cup.points()[2]),x+30*S,y+88*S,1.86f*S,GOLD);
+ ui.text("MATERIAIS "+intStr(cup.materials())+
+         "   BATERIA "+fmt(cup.battery(),0)+" WH   DESG "+fmt(cup.wear()*100.,0)+"%",
+         x+30*S,y+128*S,1.60f*S,CYAN);
+ if(cup.betweenStages()){
+   ui.text("PROXIMA: "+std::string(phoenix::circuitName(cup.nextCourse()))+
+           "  /  "+intStr(cup.stage()+2),x+30*S,y+162*S,1.58f*S,MUTED);
+   ui.text("[1] CONSERVAR   CUSTO ZERO",x+30*S,y+200*S,1.76f*S,WHITE);
+   ui.text("[2] REPARO RAPIDO   1 MAT + 9 WH",x+30*S,y+238*S,1.58f*S,WHITE);
+   ui.text("[3] REPARO TOTAL   2 MAT + 24 WH",x+30*S,y+271*S,1.58f*S,GOLD);
+ }else{
+   ui.text("SUA COLOCACAO FINAL: P"+intStr(cup.overallPosition()),
+           x+30*S,y+204*S,2.5f*S,ROSE);
+   ui.text("ESC / MENU   |   J / NOVO CAMPEONATO",x+30*S,y+271*S,1.56f*S,MUTED);
+ }
+}
 void screenshot(GLApi&gl,const std::string&name,int w,int h){
  std::vector<unsigned char> pixels(std::size_t(w)*h*4);gl.ReadPixels(0,0,w,h,RGBA,UNSIGNED_BYTE,pixels.data());
  std::ofstream f(name,std::ios::binary);if(!f)throw std::runtime_error("Sem permissao para salvar screenshot");f<<"P6\n"<<w<<" "<<h<<"\n255\n";for(int y=h-1;y>=0;--y)for(int x=0;x<w;x++){const auto*p=&pixels[4*(std::size_t(y)*w+x)];f.write(reinterpret_cast<const char*>(p),3);}std::cout<<"SCREENSHOT "<<name<<"\n";
@@ -362,8 +396,8 @@ void screenshot(GLApi&gl,const std::string&name,int w,int h){
 } // namespace
 int main(int argc,char**argv){
  try{
-  std::string shot,dataDirOverride;int maxFrames=0;int initialWeather=0;bool autoPilot=false,forceGarage=false,forceMenu=false,initialOverview=false,benchmark=false,noVsync=false;int initialCircuit=3,initialLaps=3,initialRivals=2,initialDifficulty=1;int initialQuality=2, initialWidth=1280, initialHeight=720;
-  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--screenshot"&&i+1<argc)shot=argv[++i];else if(a=="--frames"&&i+1<argc)maxFrames=std::stoi(argv[++i]);else if(a=="--no-vsync")noVsync=true;else if(a=="--data-dir"&&i+1<argc)dataDirOverride=argv[++i];else if(a=="--autopilot")autoPilot=true;else if(a=="--garage")forceGarage=true;else if(a=="--overview")initialOverview=true;else if(a=="--menu")forceMenu=true;else if(a=="--benchmark")benchmark=true;else if(a=="--width"&&i+1<argc)initialWidth=std::clamp(std::stoi(argv[++i]),640,3840);else if(a=="--height"&&i+1<argc)initialHeight=std::clamp(std::stoi(argv[++i]),480,2160);else if(a=="--laps"&&i+1<argc)initialLaps=std::clamp(std::stoi(argv[++i]),0,99);else if(a=="--circuit"&&i+1<argc)initialCircuit=std::clamp(std::stoi(argv[++i]),0,3);else if(a=="--rivals"&&i+1<argc)initialRivals=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--difficulty"&&i+1<argc){std::string v=argv[++i];initialDifficulty=v=="easy"?0:v=="hard"?2:1;}else if(a=="--quality"&&i+1<argc)initialQuality=std::max(0,std::min(3,std::stoi(argv[++i])));else if(a=="--weather"&&i+1<argc){std::string v=argv[++i];initialWeather=v=="rain"?1:v=="snow"?2:v=="storm"?3:v=="fog"?4:0;}}
+  std::string shot,dataDirOverride;int maxFrames=0;int initialWeather=0;bool autoPilot=false,forceGarage=false,forceMenu=false,initialOverview=false,initialChampionship=false,autoService=false,benchmark=false,noVsync=false;int initialCircuit=3,initialLaps=3,initialRivals=2,initialDifficulty=1;int initialQuality=2, initialWidth=1280, initialHeight=720;
+  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--screenshot"&&i+1<argc)shot=argv[++i];else if(a=="--frames"&&i+1<argc)maxFrames=std::stoi(argv[++i]);else if(a=="--no-vsync")noVsync=true;else if(a=="--data-dir"&&i+1<argc)dataDirOverride=argv[++i];else if(a=="--autopilot")autoPilot=true;else if(a=="--championship")initialChampionship=true;else if(a=="--auto-service")autoService=true;else if(a=="--garage")forceGarage=true;else if(a=="--overview")initialOverview=true;else if(a=="--menu")forceMenu=true;else if(a=="--benchmark")benchmark=true;else if(a=="--width"&&i+1<argc)initialWidth=std::clamp(std::stoi(argv[++i]),640,3840);else if(a=="--height"&&i+1<argc)initialHeight=std::clamp(std::stoi(argv[++i]),480,2160);else if(a=="--laps"&&i+1<argc)initialLaps=std::clamp(std::stoi(argv[++i]),0,99);else if(a=="--circuit"&&i+1<argc)initialCircuit=std::clamp(std::stoi(argv[++i]),0,3);else if(a=="--rivals"&&i+1<argc)initialRivals=std::clamp(std::stoi(argv[++i]),0,2);else if(a=="--difficulty"&&i+1<argc){std::string v=argv[++i];initialDifficulty=v=="easy"?0:v=="hard"?2:1;}else if(a=="--quality"&&i+1<argc)initialQuality=std::max(0,std::min(3,std::stoi(argv[++i])));else if(a=="--weather"&&i+1<argc){std::string v=argv[++i];initialWeather=v=="rain"?1:v=="snow"?2:v=="storm"?3:v=="fog"?4:0;}}
   if(benchmark&&maxFrames==0)maxFrames=300;
   if(SDL_Init(0x00000020 | 0x00004000 | 0x00002000)!=0)throw std::runtime_error(SDL_GetError());
   SDL_GL_SetAttribute(17,3);SDL_GL_SetAttribute(18,3);SDL_GL_SetAttribute(21,1);SDL_GL_SetAttribute(5,1);SDL_GL_SetAttribute(6,24);
@@ -440,6 +474,7 @@ int main(int argc,char**argv){
   if(SDL_NumJoysticks()>0 && SDL_IsGameController(0))controller=SDL_GameControllerOpen(0);
   bool previousGamepadPause=false;
   if(controller)std::cout<<"GAMEPAD CONNECTED\n";
+  phoenix::Championship championship;
   auto resetRivals=[&](){
     for(int i=0;i<2;++i){rivals[i].reset(game.circuit(),game.weather(),i==0?1.0:.88,-.09*(i+1));rivals[i].setDifficulty(static_cast<phoenix::RivalDifficulty>(difficulty));}
   };
@@ -455,6 +490,39 @@ int main(int argc,char**argv){
   bool running=true,paused=false,menuOpen=forceMenu||(maxFrames==0&&!forceGarage),fullscreen=false,mapOpen=initialOverview,muted=false,ghostVisible=true;
   int quality=initialQuality,frame=0; UI ui;ui.verts.reserve(30000);ui.letterVerts.reserve(14000);int measuredRace=0,measuredGarage=0,measuredMenu=0;std::vector<double> frameMs;frameMs.reserve(maxFrames>0?maxFrames:0);double fps=60.,fpsWindow=0.;int fpsFrames=0;
   float orbit=0,smx=(float)game.vehicle().x,smy=(float)game.vehicle().y;
+  auto loadCupStage=[&](){
+     game.setCircuit(championship.course());
+     game.setTargetLaps(1);
+     game.setWeather(championship.stageWeather());
+     game.seedTireWear(championship.wear());
+     reloadRecord();
+     resetRivals();
+     resultWritten=false;rivalCollisionCooldown=0.;
+     knownDamageEvents=0;knownFinished=false;
+     smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;
+  };
+  auto startCup=[&](){
+     championship.start();rivalCount=2;
+     loadCupStage();menuOpen=false;paused=false;showHistory=false;
+  };
+  if(initialChampionship)startCup();
+  auto leaveCup=[&](){
+     championship=phoenix::Championship{};
+     game.setCircuit(phoenix::Circuit::Sakura);
+     game.setTargetLaps(3);
+     game.setWeather(phoenix::Weather::Sunny);
+     reloadRecord();resetRivals();resultWritten=false;
+     smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;
+     paused=false;menuOpen=true;
+  };
+  auto applyService=[&](phoenix::ServiceChoice choice){
+     if(!championship.service(choice))return false;
+     std::cout<<"CUP_SERVICE option="<<(int)choice<<" next="<<championship.stage()+1
+              <<" material="<<championship.materials()<<" energy="<<championship.battery()
+              <<" wear="<<championship.wear()<<"\n";
+     loadCupStage();
+     return true;
+  };
   std::uint32_t ticks=SDL_GetTicks();double accumulator=0;
   const auto benchStart=std::chrono::steady_clock::now(); const int warmup=benchmark?std::min(30,maxFrames/4):0;
   while(running){
@@ -473,24 +541,28 @@ int main(int argc,char**argv){
       switch(choice){
        case phoenix::MenuAction::Start: menuOpen=false;showHistory=false;break;
        case phoenix::MenuAction::Course:
+        if(championship.active())break;
         game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%4));
         reloadRecord();resetRivals();resultWritten=false;
         smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;break;
        case phoenix::MenuAction::Laps:{
+        if(championship.active())break;
         const int n=game.targetLaps();
         game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);
         reloadRecord();resetRivals();resultWritten=false;
         smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;break;}
        case phoenix::MenuAction::Rivals:
+        if(championship.active())break;
         rivalCount=(rivalCount+1)%3;game.restart();reloadRecord();resetRivals();resultWritten=false;
         smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;break;
-       case phoenix::MenuAction::Difficulty: difficulty=(difficulty+1)%3;resetRivals();break;
+       case phoenix::MenuAction::Difficulty: if(championship.active())break; difficulty=(difficulty+1)%3;resetRivals();break;
        case phoenix::MenuAction::Volume: masterVolume=masterVolume>=.99f?0.f:std::min(1.f,masterVolume+.1f);break;
        case phoenix::MenuAction::History: showHistory=!showHistory;reloadHistory();break;
        case phoenix::MenuAction::Keyboard: controlLayout=(controlLayout+1)%3;break;
        case phoenix::MenuAction::Guide: racingAssist=!racingAssist;break;
        case phoenix::MenuAction::Colors: accessible=!accessible;break;
        case phoenix::MenuAction::Quality: quality=(quality+1)%4;break;
+       case phoenix::MenuAction::Championship:startCup();break;
        case phoenix::MenuAction::None: break;
       }
     }
@@ -501,24 +573,28 @@ int main(int argc,char**argv){
      if(k=='h' && menuOpen){showHistory=!showHistory;reloadHistory();}
      if(k=='b' && menuOpen)controlLayout=(controlLayout+1)%3;
      if(k=='n' && menuOpen)accessible=!accessible;
+     if(k=='j' && menuOpen)startCup();
+     if(k=='o' && menuOpen && championship.active())leaveCup();
      if(k=='q')quality=(quality+1)%4;
      if(k=='f' && menuOpen)racingAssist=!racingAssist;
      if(k=='-' || k==1073741910)masterVolume=std::max(0.f,masterVolume-.1f);
      if(k=='=' || k=='+' || k==1073741911)masterVolume=std::min(1.f,masterVolume+.1f);
-     if(k=='l' && menuOpen){const int n=game.targetLaps();game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
-     if(k=='d' && menuOpen){difficulty=(difficulty+1)%3;resetRivals();}
-     if(k=='k' && menuOpen){rivalCount=(rivalCount+1)%3;game.restart();reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
-     if(k=='t' && menuOpen){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%4));reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+     if(k=='l' && menuOpen && !championship.active()){const int n=game.targetLaps();game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+     if(k=='d' && menuOpen && !championship.active()){difficulty=(difficulty+1)%3;resetRivals();}
+     if(k=='k' && menuOpen && !championship.active()){rivalCount=(rivalCount+1)%3;game.restart();reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+     if(k=='t' && menuOpen && !championship.active()){game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%4));reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
      if(!menuOpen){
+       if(championship.betweenStages() && k>='1'&&k<='3')
+           applyService(static_cast<phoenix::ServiceChoice>(k-'0'));
        if(k=='m')mapOpen=!mapOpen;
        if(k=='g')ghostVisible=!ghostVisible;
        if(k=='v')muted=!muted;
        if(k=='p')paused=!paused;
-       if(k=='r'){game.restart();reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}
+       if(k=='r' && !(championship.betweenStages()||championship.finished())){if(championship.active())loadCupStage();else {game.restart();reloadRecord();resetRivals();resultWritten=false;smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;}}
        if(k=='c')game.setAutopilot(!game.autopilot());
        if(k=='x')game.requestDamage("carenagem",10.);
        if(k=='z')game.requestDamage("chassi",18.);
-       if(k>='1'&&k<='5'){game.setWeather((phoenix::Weather)(k-'1'));reloadRecord();for(auto& bot:rivals)bot.setWeather(game.weather());}
+       if(k>='1'&&k<='5' && !championship.active()){game.setWeather((phoenix::Weather)(k-'1'));reloadRecord();for(auto& bot:rivals)bot.setWeather(game.weather());}
      }
     }
    }
@@ -542,7 +618,7 @@ int main(int argc,char**argv){
    }
    std::uint32_t now=SDL_GetTicks();double dt=std::min(.075,(now-ticks)*.001);ticks=now;
    if(maxFrames>0)dt=1.0/60.0;
-   if(!paused && !menuOpen){accumulator+=dt;int steps=0;while(accumulator>=1./120.&&steps<12){
+   if(!paused && !menuOpen && !championship.betweenStages() && !championship.finished()){accumulator+=dt;int steps=0;while(accumulator>=1./120.&&steps<12){
      game.update(in,1./120.);
      if(!game.finished()){
        rivalCollisionCooldown=std::max(0.,rivalCollisionCooldown-1./120.);
@@ -575,12 +651,30 @@ int main(int argc,char**argv){
      recordedBest=game.bestLapTime();
      if(!saved)std::cerr<<"Aviso: falha ao salvar recorde em "<<recordFile().string()<<"\n";
    }
+   if(championship.active() && !championship.finished() && !championship.betweenStages() &&
+       (game.finished()||game.abandoned())){
+      const auto raceResult=phoenix::makeRaceOutcome(game,rivals,2);
+      if(championship.recordStage(raceResult,rivals,game.handling().tireWear))
+         std::cout<<"CUP_STAGE_COMPLETE course="<<(int)raceResult.circuit
+                  <<" time="<<raceResult.elapsedSeconds
+                  <<" player_rank="<<raceResult.position
+                  <<" points="<<championship.points()[0]
+                  <<" abandoned="<<raceResult.abandoned<<"\n";
+      if(championship.finished() && !benchmark && !recordDir.empty())
+        if(!championship.appendSummary(recordDir/"championship_history.csv"))
+          std::cerr<<"Aviso: falha ao gravar campeonato\n";
+   }
    if(!resultWritten && !benchmark && !recordDir.empty() && (game.finished()||game.abandoned())){
       const auto outcome=phoenix::makeRaceOutcome(game,rivals,rivalCount);
       if(!phoenix::appendRaceHistory(recordDir/"race_history.csv",outcome))
          std::cerr<<"Aviso: falha ao gravar resultado da corrida\n";
       reloadHistory();
       resultWritten=true;
+   }
+   if((benchmark||autoService) && championship.betweenStages()){
+      if(!applyService(phoenix::ServiceChoice::Full))
+        if(!applyService(phoenix::ServiceChoice::Quick))
+          applyService(phoenix::ServiceChoice::Conserve);
    }
    smx+=(float)(game.vehicle().x-smx)*std::min(1.0,dt*3.4);smy+=(float)(game.vehicle().y-smy)*std::min(1.0,dt*3.4);
    int w=0,h=0;SDL_GL_GetDrawableSize(window,&w,&h);w=std::max(320,w);h=std::max(240,h);
@@ -641,7 +735,11 @@ int main(int argc,char**argv){
       gl.DrawArrays(TRIANGLES,0,3);
    }
    ui.verts.clear();ui.letterVerts.clear();
-   if(menuOpen)drawMenu(ui,w,h,quality,game.circuit(),game.targetLaps(),rivalCount,difficulty,int(masterVolume*100+.5f),history,showHistory,controlLayout,accessible); else drawHUD(ui,game,rivals,rivalCount,w,h,quality,paused,fps,ghostVisible);
+   if(menuOpen)drawMenu(ui,w,h,quality,game.circuit(),game.targetLaps(),rivalCount,difficulty,int(masterVolume*100+.5f),history,showHistory,controlLayout,accessible,championship.active());
+   else {
+      drawHUD(ui,game,rivals,rivalCount,w,h,quality,paused,fps,ghostVisible,!championship.active());
+      if(championship.active())drawChampionship(ui,championship,w,h);
+   }
    gl.Enable(BLEND);gl.BlendFunc(SRC_ALPHA,ONE_MINUS_SRC_ALPHA);
    gl.UseProgram(uiProg);set2(gl,uiProg,"res",(float)w,(float)h);
    gl.BindVertexArray(uiVAO);gl.BindBuffer(ARRAY,uiVBO);
@@ -678,6 +776,11 @@ int main(int argc,char**argv){
    frame++;if(maxFrames>0&&frame>=maxFrames)running=false;
    if(maxFrames==0)SDL_Delay(1);
   }
+  if(benchmark && championship.active())
+    std::cout<<"CUP stages="<<championship.stage()+1<<" finished="<<championship.finished()
+       <<" points="<<championship.points()[0]<<"/"<<championship.points()[1]
+       <<"/"<<championship.points()[2]<<" materials="<<championship.materials()
+       <<" battery="<<championship.battery()<<" wear="<<championship.wear()<<"\n";
   if(benchmark){
     double wall=std::chrono::duration<double>(std::chrono::steady_clock::now()-benchStart).count();
     std::cout<<"BENCHMARK frames="<<frame<<" seconds="<<wall<<" avg_fps="<<(wall>0?frame/wall:0.)

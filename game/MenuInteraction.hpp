@@ -5,7 +5,7 @@
 namespace phoenix {
 enum class MenuAction {
     None, Start, Course, Laps, Rivals, Difficulty, Volume, History,
-    Keyboard, Guide, Colors, Quality
+    Keyboard, Guide, Colors, Quality, Championship
 };
 // Menu screen coordinates are the same as the JDM HUD's reference 1280x720 layout.
 // Caller supplies logical SDL window size and actual GL drawable size (HiDPI-safe).
@@ -22,6 +22,7 @@ inline MenuAction menuHitTest(int mx,int my,int winW,int winH,int drawW,int draw
     if(y>=504.&&y<530.)return x<239.?MenuAction::Difficulty:MenuAction::Volume;
     if(y>=530.&&y<556.)return x<250.?MenuAction::History:x<365.?MenuAction::Keyboard:MenuAction::Guide;
     if(y>=556.&&y<592.)return x<250.?MenuAction::Colors:MenuAction::Quality;
+    if(y>=592.&&y<625.)return MenuAction::Championship;
     return MenuAction::None;
 }
 } // namespace phoenix

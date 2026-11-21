@@ -41,6 +41,7 @@ public:
     void requestCollision(double speedKmh,double incidence,bool left,bool front);
     KartContactEvent collideRival(const GhostPose& rival,const GhostPose& previousRival,double dt);
     const HandlingState& handling() const noexcept { return handling_; }
+    void seedTireWear(double wear) noexcept;
     double driftAmount() const noexcept { return driftBlend_; }
     double driftPoints() const noexcept { return driftPoints_; }
     Weather weather() const noexcept { return weather_; }
