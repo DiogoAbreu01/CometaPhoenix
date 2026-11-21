@@ -1,6 +1,7 @@
 // COMETA PHOENIX - Jogo nativo SDL2/OpenGL em C++17.
 // SDL2 e apenas a camada de janela/entrada; simulacao, UI e shaders sao proprios.
 #include "GamePhysics.hpp"
+#include "MenuInteraction.hpp"
 #include "RaceResults.hpp"
 #include <algorithm>
 #include <array>
@@ -314,7 +315,7 @@ void drawMenu(UI& ui,int w,int h,int quality,phoenix::Circuit circuit,int laps,
  ui.text("JAPANESE NIGHT RUN  /  REGENERATIVE RACING",x+27*S,y+219*S,1.34f*S,MUTED);
  ui.rect(x+23*S,y+259*S,478*S,64*S,{.78f,.32f,.43f,.94f});
  ui.rect(x+23*S,y+259*S,478*S,3*S,GOLD);
- ui.text("[ ENTER ]   INICIAR CORRIDA",x+50*S,y+278*S,2.85f*S,WHITE);
+ ui.text("[ ENTER / CLICK ]   INICIAR CORRIDA",x+50*S,y+278*S,2.85f*S,WHITE);
  ui.rect(x+23*S,y+341*S,478*S,116*S,{.034f,.050f,.083f,.91f});
  ui.text("[ T ]  ESCOLHER PISTA",x+39*S,y+356*S,1.56f*S,GOLD);
  ui.text(phoenix::circuitName(circuit),x+39*S,y+379*S,3.05f*S,WHITE);
@@ -460,6 +461,37 @@ int main(int argc,char**argv){
    while(SDL_PollEvent(ev)){
     std::uint32_t type{};std::memcpy(&type,ev,sizeof(type));
     if(type==0x100)running=false;
+    if(type==0x401 && ev[16]==1 && menuOpen){
+      int mouseX=0,mouseY=0,winW=0,winH=0,drawW=0,drawH=0;
+      std::memcpy(&mouseX,ev+20,sizeof(mouseX));
+      std::memcpy(&mouseY,ev+24,sizeof(mouseY));
+      SDL_GetWindowSize(window,&winW,&winH);
+      SDL_GL_GetDrawableSize(window,&drawW,&drawH);
+      const auto choice=phoenix::menuHitTest(mouseX,mouseY,winW,winH,drawW,drawH);
+      switch(choice){
+       case phoenix::MenuAction::Start: menuOpen=false;showHistory=false;break;
+       case phoenix::MenuAction::Course:
+        game.setCircuit(static_cast<phoenix::Circuit>((static_cast<int>(game.circuit())+1)%4));
+        reloadRecord();resetRivals();resultWritten=false;
+        smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;break;
+       case phoenix::MenuAction::Laps:{
+        const int n=game.targetLaps();
+        game.setTargetLaps(n==0?1:n==1?3:n==3?5:0);
+        reloadRecord();resetRivals();resultWritten=false;
+        smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;break;}
+       case phoenix::MenuAction::Rivals:
+        rivalCount=(rivalCount+1)%3;game.restart();reloadRecord();resetRivals();resultWritten=false;
+        smx=(float)game.vehicle().x;smy=(float)game.vehicle().y;break;
+       case phoenix::MenuAction::Difficulty: difficulty=(difficulty+1)%3;resetRivals();break;
+       case phoenix::MenuAction::Volume: masterVolume=masterVolume>=.99f?0.f:std::min(1.f,masterVolume+.1f);break;
+       case phoenix::MenuAction::History: showHistory=!showHistory;reloadHistory();break;
+       case phoenix::MenuAction::Keyboard: controlLayout=(controlLayout+1)%3;break;
+       case phoenix::MenuAction::Guide: racingAssist=!racingAssist;break;
+       case phoenix::MenuAction::Colors: accessible=!accessible;break;
+       case phoenix::MenuAction::Quality: quality=(quality+1)%4;break;
+       case phoenix::MenuAction::None: break;
+      }
+    }
     if(type==0x300&&ev[13]==0){int k=0;std::memcpy(&k,ev+20,sizeof(k));
      if(k==27){if(menuOpen)running=false;else {menuOpen=true;paused=false;}}
      if(k==13||k==1073741912){menuOpen=false;}

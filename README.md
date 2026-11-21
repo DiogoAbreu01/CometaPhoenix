@@ -98,3 +98,7 @@ e tools/make_jdm_menu.py. Os resultados gerados estao inclusos no pacote;
 a compilacao e a execucao nao dependem de Python.
 O editor de assets requer Pillow e NumPy, alem de fontes do Windows.
 Veja docs/ART_DIRECTION_JDM.md para capturas e limitacoes.
+
+## 0.10.1 - Menu JDM navegavel com mouse
+
+Tela principal Sakura Edition agora recebe cliques em Iniciar Corrida, circuito, voltas, rivais, dificuldade, volume, historico, controles, guia, paleta e qualidade. As teclas originais continuam funcionando. Hit testing C++17 usa escala da janela SDL2 e framebuffer HiDPI. Teste deterministico: cometa_menu_interaction_tests.

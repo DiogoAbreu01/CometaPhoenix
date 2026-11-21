@@ -97,3 +97,6 @@ Entrada T escolhe quatro circuitos, sendo Japao a primeira pista exibida.
 GLSL e C++17 continuam com fontes e compilacao existentes.
 Testes CTest ampliados para clima, rival AI e stress no quarto circuito.
 O projeto continua kart top-down 2D com oficina 3D, nao simulador JDM AAA.
+
+## 0.10.1 - Controles do novo menu JDM
+- Mouse SDL2 no menu, botoes originais com clique e teclado, inclusive escalas Full HD e HiDPI; regressao C++17 adicionada ao CTest. Preservada a arte Sakura Edition 0.10.0 e seus assets.
