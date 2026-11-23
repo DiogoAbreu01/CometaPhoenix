@@ -1,6 +1,34 @@
-# Cometa Phoenix — 0.10.0 (JDM Sakura Edition)
+<div align="center">
 
-Projeto ECOP13A / LAB12–LAB14. Corrida 2D com quatro circuitos e cinco condições climáticas, oficina 3D com diagnóstico, regeneração e abandono. Aplicativo e motor C++17 com SDL2/OpenGL 3.3 e shaders GLSL. Não depende de navegador nem JavaScript. Modelo físico didático, não certificado.
+# COMETA PHOENIX
+
+**Midnight garage. Sakura streets. Native C++.**
+
+*A JDM-flavored racing and repair simulator — an engineering project that actually runs outside the browser.*
+
+[Build & play](#compilar-e-jogar) · [Game systems](#conceitos-da-disciplina) · [Benchmarks](#testes-e-benchmarks) · [CI](.github/workflows/ci.yml)
+
+[![CI](https://github.com/DiogoAbreu01/CometaPhoenix/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DiogoAbreu01/CometaPhoenix/actions/workflows/ci.yml)
+![C++17](https://img.shields.io/badge/C%2B%2B17-101017?style=flat-square&logo=cplusplus&logoColor=ff86ae)
+![SDL2 / OpenGL](https://img.shields.io/badge/SDL2_%2F_OpenGL-101017?style=flat-square&logo=opengl&logoColor=ff86ae)
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/sakura_race_v010.jpg" alt="In-engine Cometa Phoenix Sakura racing capture" width="430"></td>
+    <td><img src="docs/screenshots/jdm_garage_v010.jpg" alt="In-engine Cometa Phoenix JDM garage capture" width="430"></td>
+  </tr>
+</table>
+<sub>Existing project captures, not stock imagery.</sub>
+
+</div>
+
+> **DAs / Developer's note:** My childhood racing-game obsession meets C++: weather, vehicle damage, repair strategies and an actual graphics/rendering loop.
+
+**Under the hood:** Native C++17, SDL2, OpenGL 3.3/GLSL, a shared simulation engine, STL algorithms, repair strategy polymorphism, race physics, garage management and reproducible CLI/graphics benchmarks. The physical model is educational, **not a certified vehicle simulator**.
+
+**Build and validation:** Use CMake + CTest ([instructions below](#compilar-e-jogar)); in-game screenshots are already versioned in [docs/screenshots](docs/screenshots). Performance measurements depend on hardware and benchmark settings.
+
+---
 
 ## Conceitos da disciplina
 - `include/cometa/Simulation.hpp`: `Historico<T>` utilizado com `EventoDano` e `AmostraTelemetria`; função genérica `limitar<T>`.
