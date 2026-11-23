@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/das-animated-icon.svg" alt="Cometa Phoenix animated project emblem" width="122" /></p>
+
 <h1 align="center">COMETA PHOENIX</h1>
 
 **Midnight garage. Sakura streets. Native C++.**
