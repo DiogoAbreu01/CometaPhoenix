@@ -1,6 +1,4 @@
-<div align="center">
-
-# COMETA PHOENIX
+<h1 align="center">COMETA PHOENIX</h1>
 
 **Midnight garage. Sakura streets. Native C++.**
 
@@ -20,7 +18,6 @@
 </table>
 <sub>Existing project captures, not stock imagery.</sub>
 
-</div>
 
 > **DAs / Developer's note:** My childhood racing-game obsession meets C++: weather, vehicle damage, repair strategies and an actual graphics/rendering loop.
 
